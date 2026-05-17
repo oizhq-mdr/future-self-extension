@@ -1,0 +1,22 @@
+**[Connectedness with Future Self in 2025]**
+This section measures the individual's sense of connection between their present and future self at age 20.
+
+- Connection Level: {FS}
+
+**[Future Envisioning in 2025]**
+This section assesses the individual's ability to envision and navigate toward their future.
+
+- Self-Directed Future Navigation - Pathways: {PATH}
+- Self-Directed Future Navigation - Agency: {AGEN}
+- Future Time Perspective: {FTP}
+- Future Work Selves: {FWS}
+
+**[Self-Worth and Identity in 2025]**
+This section addresses the individual's overall self-esteem and sense of personal value.
+
+- Overall Self-Esteem: {SI}
+
+**[Psychological Resilience in 2025]**
+This section evaluates the individual's capacity to bounce back from difficulties.
+
+- Overall Resilience: {PR}

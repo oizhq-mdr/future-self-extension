@@ -1,0 +1,15 @@
+### Current Profile (Year: 2025)
+
+[Demographics] Demographics describe who this person is.
+- Name: {NAME}
+- Age: {AGE}
+- Sex: {SEX}
+- Disability Status: {HEA_DIS} {IMPACT}
+- Nationality: {NATIONALITY}
+- Residence: {RESIDENCE}
+- Education: {EDU}
+- Reason for Leaving School: {LEAVE_SCHOOL}
+- Perceived Income: {PER_INC}
+- Income Satisfaction: {SAT_INC}
+- Living Style: {LIV}
+- Number of Siblings: {SIB}
