@@ -1,84 +1,125 @@
-# SNU 스무살의 나 (SNU My Twenty-Year-Old Self) 📩
+# FutureSelf Extension Node QA
 
-이 프로젝트는 서울대학교(SNU) 학생들을 대상으로 한 다회기 워크숍용 AI 어플리케이션입니다. 학생들이 심리 검사 결과와 자기 탐색 데이터를 바탕으로 자신의 '미래 자아(Future Self)'와 상호작용하며 자아 정체성을 탐구할 수 있도록 돕습니다.
+FutureSelf Extension은 사용자의 편지와 설문 데이터를 바탕으로 미래 자아 답장을 생성하고, 그 과정을 노드 단위로 점검하기 위한 Streamlit 앱입니다.
 
-## 🌟 주요 기능
+이 앱은 하나의 end-to-end 파이프라인을 여러 QA 노드로 나누어 확인합니다. 입력 편지 필터링, 지식 구조화, 답장 생성 프롬프트 편집, 답장 생성, 출력 스크리닝, 개선 프롬프트 생성까지 한 화면에서 순서대로 테스트할 수 있습니다.
 
-### 1. 다회기 워크숍 지원 (Multi-session Workflow)
-- **1회기 (Session 1):** 초기 지식 구조화 및 '스무살의 나'에게 보내는 첫 번째 편지에 대한 답장 생성.
-- **2회기 (Session 2):** 추가 활동 및 대화 내용을 바탕으로 지식 업데이트 및 두 번째 답장 생성.
-- **3회기 (Session 3):** 최종 지식 업데이트 및 대화 기록(History)을 유지한 상태에서의 세 번째 답장 생성.
+## 주요 기능
 
-### 2. 심리 검사 및 데이터 분석
-- **Big Five Personality (BFI):** 5대 성격 특성 분석 및 요약.
-- **Portrait Values Questionnaire (PVQ):** 삶의 가치관 및 가이드 원칙 분석.
-- **진정성 검사 (Authenticity):** 자기 이해 및 진정성 지표 산출.
-- **사전 검사 (Pre-test):** 자아존중감(Self-esteem), 회복탄력성(Resilience), 미래 시간 관점(Future Time Perspective) 등 다각도 분석.
+- 사용자 선택: Google Sheets CSV에서 사용자를 불러옵니다.
+- 입력 필터링: 사용자가 작성한 편지를 안전성/위험도 기준으로 JSON 평가합니다.
+- 지식 구조화: 인구통계, BFI, PVQ, 선호/비선호, 미래 프로필을 하나의 knowledge로 구성합니다.
+- 프롬프트 편집: `data/prompt_template/extension_prompts/` 아래의 Markdown 프롬프트를 앱에서 직접 확인하고 저장할 수 있습니다.
+- 답장 생성: 선택한 생성 프롬프트와 구조화된 knowledge를 사용해 미래 자아 답장을 생성합니다.
+- 출력 스크리닝: 생성된 답장을 품질/안전성 기준으로 JSON 평가합니다.
+- 개선 루프: 스크리닝 결과를 바탕으로 다음 생성을 위한 개선 지시문을 만듭니다.
 
-### 3. AI 기반 자아 대화 (Future Self Interaction)
-- **지식 구조화 (Knowledge Structuring):** 인구통계학적 정보, 심리 검사 결과, 좋아하고 싫어하는 것, 20세의 미래 프로필 등을 통합하여 AI를 위한 체계적인 지식 베이스 구축.
-- **개인화된 답장 생성:** OpenAI GPT-4를 활용하여 사용자의 특징이 반영된 공감적이고 개인화된 미래 자아의 답장 생성.
-- **대화 맥락 유지:** 이전 회기의 대화 내용을 기억하여 연속성 있는 대화 경험 제공.
-
-## 🛠 기술 스택
-
-- **Frontend:** [Streamlit](https://streamlit.io/)
-- **Data Analysis:** [Pandas](https://pandas.pydata.org/)
-- **AI/LLM:** [OpenAI API](https://openai.com/api/) (GPT-4o)
-- **Language:** Python 3.x
-
-## 📁 프로젝트 구조
+## 프로젝트 구조
 
 ```text
-/Users/jaewoolee/Dev/future-self-main/
-├── streamlit_app_first.py     # 1회기 메인 애플리케이션
-├── streamlit_app_second.py    # 2회기 메인 애플리케이션
-├── streamlit_app_third.py     # 3회기 메인 애플리케이션
-├── knowledge_structure.py     # 사용자 데이터를 LLM 지식으로 변환하는 로직
-├── gpt_structure.py          # OpenAI API 연동 및 프롬프트 실행 모듈
-├── bfi_scoring.py            # BFI(Big 5) 성격 검사 채점 로직
-├── pvq_scoring.py            # PVQ(가치관) 검사 채점 로직
-├── requirements.txt           # 프로젝트 의존성 라이브러리 목록
+.
+├── streamlit_app_extension.py
+├── ext_knowledge_structure.py
+├── gpt_structure.py
+├── bfi_scoring.py
+├── pvq_scoring.py
+├── requirements.txt
 └── data/
-    └── prompt_template/       # LLM 시스템 프롬프트 및 텍스트 템플릿
-        ├── first_letter_sys_prompt.txt
-        ├── second_letter_sys_prompt.txt
-        ├── third_letter_sys_prompt.txt
+    └── prompt_template/
         ├── BFI_summary_sys.txt
         ├── PVQ_summary_sys.txt
-        └── ...
+        ├── demo.txt
+        ├── love_hate.txt
+        ├── profile_at_20.txt
+        └── extension_prompts/
+            ├── input_filter/
+            ├── output_filter/
+            ├── improvement/
+            └── reply_generation/
 ```
 
-## 🚀 시작하기
+## 설치
 
-### 1. 환경 설정
-Python 3.x 환경에서 필요한 라이브러리를 설치합니다.
+Python 3.12 기준으로 확인했습니다.
+
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-### 2. API 키 설정
-Streamlit의 시크릿 관리 기능을 사용하거나 `.streamlit/secrets.toml` 파일을 생성하여 OpenAI API 키를 설정해야 합니다.
+## OpenAI API 키 설정
+
+Streamlit secrets에 OpenAI API 키가 필요합니다.
+
 ```toml
 # .streamlit/secrets.toml
-OPENAI_API_KEY = "your-api-key-here"
+OPENAI_API_KEY = "your-api-key"
 ```
 
-### 3. 애플리케이션 실행
-진행하고자 하는 회기에 맞춰 명령어를 실행합니다.
+앱에서는 다음 방식으로 키를 읽습니다.
+
+```python
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+```
+
+## 실행
+
 ```bash
-# 1회기 실행
-streamlit run streamlit_app_first.py
-
-# 2회기 실행
-streamlit run streamlit_app_second.py
-
-# 3회기 실행
-streamlit run streamlit_app_third.py
+streamlit run streamlit_app_extension.py
 ```
 
-## 📝 데이터 처리 및 프롬프트
-이 시스템은 구글 스프레드시트에서 데이터를 실시간으로 가져와 분석합니다. 각 회기마다 사용자가 입력한 데이터와 심리 검사 결과가 `knowledge_structure.py`를 통해 통합되며, `data/prompt_template/`에 정의된 페르소나와 지침에 따라 AI가 답변을 구성합니다.
+앱이 열리면 상단 Node Graph에서 각 노드를 클릭해 바로 이동할 수 있습니다. 중간 노드로 바로 진입하면 데모 데이터가 필요한 상태값을 임시로 채워 빠르게 노드별 QA를 할 수 있습니다.
 
-## ⚖️ 라이선스
-본 프로젝트는 교육 및 연구 목적으로 제작되었습니다.
+## Streamlit Community Cloud 배포
+
+1. 이 프로젝트를 GitHub repository에 push합니다.
+2. [Streamlit Community Cloud](https://share.streamlit.io/)에서 `Create app`을 선택합니다.
+3. GitHub repository, branch, entrypoint file을 지정합니다.
+   - Entrypoint file: `streamlit_app_extension.py`
+4. `Advanced settings`에서 Python version을 선택합니다.
+   - 로컬 검증 기준: Python 3.12
+5. `Secrets` 입력란에 아래 내용을 붙여넣습니다.
+
+```toml
+OPENAI_API_KEY = "your-api-key"
+```
+
+6. `Deploy`를 누릅니다.
+
+배포 로그에서 dependency 설치 오류가 나면 `requirements.txt`를 먼저 확인합니다. 앱이 실행된 뒤 OpenAI 오류가 나면 Streamlit Cloud secrets에 `OPENAI_API_KEY`가 정확히 저장됐는지 확인합니다.
+
+## 데이터 입력
+
+앱은 `streamlit_app_extension.py`의 `load_data()`에서 Google Sheets CSV를 읽습니다.
+
+```python
+pd.read_csv(
+    "https://docs.google.com/spreadsheets/d/1MN6NmPU_DjJR2zYZ5Ct_SwiOuuvGXkpXBjT9DJYRYyQ/export?format=csv"
+)
+```
+
+현재 컬럼 위치 기반으로 데이터를 읽기 때문에 스프레드시트 구조가 바뀌면 `ext_knowledge_structure.py`와 `streamlit_app_extension.py`의 `row.iloc[...]` 인덱스도 함께 확인해야 합니다.
+
+## 프롬프트 파일
+
+노드별 프롬프트는 아래 위치에서 관리합니다.
+
+- 입력 필터: `data/prompt_template/extension_prompts/input_filter/*.md`
+- 답장 생성: `data/prompt_template/extension_prompts/reply_generation/*.md`
+- 출력 필터: `data/prompt_template/extension_prompts/output_filter/*.md`
+- 개선 프롬프트: `data/prompt_template/extension_prompts/improvement/*.md`
+
+BFI/PVQ 요약과 knowledge 템플릿은 아래 파일을 사용합니다.
+
+- `data/prompt_template/BFI_summary_sys.txt`
+- `data/prompt_template/PVQ_summary_sys.txt`
+- `data/prompt_template/demo.txt`
+- `data/prompt_template/love_hate.txt`
+- `data/prompt_template/profile_at_20.txt`
+
+## 의존성 메모
+
+`streamlit_app_extension.py` 실행에 필요한 Python 패키지는 `requirements.txt`에 정리되어 있습니다.
+
+삭제된 이전 회기 앱 파일(`streamlit_app_first.py`, `streamlit_app_second.py`, `streamlit_app_third.py`)은 현재 extension 앱 실행에는 필요하지 않습니다.
+
+단, `gpt_structure.py`의 `update_knowledge()`는 과거 워크플로우용 함수이며 삭제된 `data/prompt_template/update_knowledge_sys.txt`를 참조합니다. 현재 extension 앱에서는 호출하지 않습니다.

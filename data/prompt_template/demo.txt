@@ -1,4 +1,4 @@
-### Current Profile (Year: 2025)
+### Current Profile
 
 [Demographics] Demographics describe who this person is.
 - Name: {NAME}
@@ -8,8 +8,6 @@
 - Nationality: {NATIONALITY}
 - Residence: {RESIDENCE}
 - Education: {EDU}
-- Reason for Leaving School: {LEAVE_SCHOOL}
-- Perceived Income: {PER_INC}
-- Income Satisfaction: {SAT_INC}
+- Income: {INC}
 - Living Style: {LIV}
 - Number of Siblings: {SIB}
