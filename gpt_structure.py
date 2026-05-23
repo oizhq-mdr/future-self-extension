@@ -3,7 +3,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 import json
 
-MODEL = 'gpt-5-2025-08-07'
+MODEL = "gpt-4o-mini"
 
 def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt):
     completion = openai.chat.completions.create(
@@ -95,11 +95,16 @@ def dd_safeguard_gpt4(safeguard_prompt, replies_text):
     return completion.choices[0].message.content
 
 def dd_filter_user_letter_gpt4(filter_prompt, letter):
+    user_content = f"""[사용자가 작성한 편지]
+{letter}
+
+응답은 반드시 JSON 객체로 반환해주세요."""
+
     completion = openai.chat.completions.create(
         model=MODEL,
         messages=[
             {'role': 'system', 'content': filter_prompt},
-            {'role': 'user', 'content': f"[사용자가 작성한 편지]\n{letter}"}
+            {'role': 'user', 'content': user_content}
         ],
         response_format={ "type": "json_object" }
     )

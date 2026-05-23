@@ -189,7 +189,11 @@ def prompt_options(category, default_path=None):
     files = []
     category_dir = EXT_PROMPT_ROOT / category
     if category_dir.exists():
-        files.extend(sorted(category_dir.glob("*.md")))
+        files.extend(
+            file
+            for file in sorted(category_dir.glob("*.md"))
+            if file.read_text(encoding="utf-8").strip()
+        )
     if default_path and default_path.exists():
         files.insert(0, default_path)
     return [str(file) for file in files]
