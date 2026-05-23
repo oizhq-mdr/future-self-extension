@@ -3,7 +3,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 import json
 
-MODEL = "gpt-4o-mini"
+MODEL = "gpt-5"
 
 def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt):
     completion = openai.chat.completions.create(
