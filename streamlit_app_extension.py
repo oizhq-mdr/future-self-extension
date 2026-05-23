@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import openai
@@ -12,7 +13,25 @@ from gpt_structure import (
     dd_generate_improvement_prompt_gpt4,
 )
 
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+def configure_openai_api_key():
+    api_key = str(st.secrets.get("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY", ""))).strip()
+    if not api_key or api_key == "your-api-key":
+        st.error("OpenAI API key가 설정되지 않았습니다. Streamlit Cloud Secrets에 OPENAI_API_KEY를 추가하세요.")
+        st.stop()
+    openai.api_key = api_key
+    os.environ["OPENAI_API_KEY"] = api_key
+
+
+configure_openai_api_key()
+
+
+def show_openai_auth_error():
+    st.error(
+        "OpenAI 인증에 실패했습니다. Streamlit Cloud Secrets의 OPENAI_API_KEY가 올바른지, "
+        "키가 만료/폐기되지 않았는지, 해당 프로젝트에 모델 사용 권한과 결제 설정이 있는지 확인하세요."
+    )
+    st.stop()
 
 PROMPT_ROOT = Path("data/prompt_template")
 EXT_PROMPT_ROOT = PROMPT_ROOT / "extension_prompts"
@@ -567,14 +586,20 @@ def render_improvement_prompt_selector():
 def run_filter(first_letter):
     filter_prompt = read_prompt(st.session_state.selected_filter_prompt_path)
     with st.spinner("사용자 편지의 고위험 내용을 필터링 중..."):
-        result = dd_filter_user_letter_gpt4(filter_prompt, first_letter)
+        try:
+            result = dd_filter_user_letter_gpt4(filter_prompt, first_letter)
+        except openai.AuthenticationError:
+            show_openai_auth_error()
         st.session_state.filter_result = result
         st.session_state.input_filter_state = "blocked" if result.get("status") == "차단" else "passed"
 
 
 def run_knowledge(user_row):
     with st.spinner("지식을 구조화하는 중..."):
-        st.session_state.knowledge = ext_knowledge_generate(user_row)
+        try:
+            st.session_state.knowledge = ext_knowledge_generate(user_row)
+        except openai.AuthenticationError:
+            show_openai_auth_error()
 
 
 def generation_prompt_with_improvement():
@@ -588,20 +613,26 @@ def run_generation(first_letter):
     st.session_state.screening_result = None
     st.session_state.output_filter_state = None
     with st.spinner("답장 1개를 생성하는 중..."):
-        st.session_state.generated_reply = dd_generate_gpt4_basic(
-            generation_prompt_with_improvement(),
-            st.session_state.knowledge,
-            first_letter,
-        )
+        try:
+            st.session_state.generated_reply = dd_generate_gpt4_basic(
+                generation_prompt_with_improvement(),
+                st.session_state.knowledge,
+                first_letter,
+            )
+        except openai.AuthenticationError:
+            show_openai_auth_error()
 
 
 def run_screening():
     screening_prompt = read_prompt(st.session_state.selected_screening_prompt_path)
     with st.spinner("생성된 답장을 스크리닝 중..."):
-        result = dd_evaluate_letter_with_prompt_gpt4(
-            st.session_state.generated_reply,
-            screening_prompt,
-        )
+        try:
+            result = dd_evaluate_letter_with_prompt_gpt4(
+                st.session_state.generated_reply,
+                screening_prompt,
+            )
+        except openai.AuthenticationError:
+            show_openai_auth_error()
         result["char_count"] = len(st.session_state.generated_reply)
         st.session_state.screening_result = result
         st.session_state.output_filter_state = "done"
@@ -610,10 +641,13 @@ def run_screening():
 def run_improvement_prompt():
     improvement_system_prompt = read_prompt(st.session_state.selected_improvement_prompt_path)
     with st.spinner("다음 생성을 위한 개선 지시문을 만드는 중..."):
-        st.session_state.improvement_prompt = dd_generate_improvement_prompt_gpt4(
-            improvement_system_prompt,
-            st.session_state.generated_reply,
-        )
+        try:
+            st.session_state.improvement_prompt = dd_generate_improvement_prompt_gpt4(
+                improvement_system_prompt,
+                st.session_state.generated_reply,
+            )
+        except openai.AuthenticationError:
+            show_openai_auth_error()
 
 
 def render_filter_result():
