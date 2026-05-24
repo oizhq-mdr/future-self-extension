@@ -1429,7 +1429,7 @@ elif st.session_state.node == "filter_letter":
         st.rerun()
 
 elif st.session_state.node == "edit_prompt":
-    st.subheader("4. 시스템 프롬프트 조정")
+    st.subheader("4. GENERATING REPLY")
     render_generation_prompt_selector()
     if st.session_state.improvement_prompt:
         with st.expander("현재 적용 중인 개선 지시문", expanded=True):
@@ -1437,6 +1437,11 @@ elif st.session_state.node == "edit_prompt":
             if st.button("개선 지시문 제거"):
                 st.session_state.improvement_prompt = ""
                 st.rerun()
+    render_llm_input_preview(
+        "LLM 입력 미리보기: GENERATING REPLY",
+        generation_llm_messages(st.session_state.generation_letter_editor or user_letter_to_agent),
+        "generating_reply_setup",
+    )
     if st.button("답장 생성으로 이동", type="primary"):
         st.session_state.node = "generate_reply"
         st.rerun()
