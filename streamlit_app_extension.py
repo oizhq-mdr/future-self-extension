@@ -267,6 +267,127 @@ def prompt_label(path):
     return prompt_path.name
 
 
+def render_llm_input_preview(title, messages, key_prefix, expanded=False):
+    """LLM 호출에 전달될 messages 배열을 화면에서 확인할 수 있게 표시한다.
+
+    `title`은 expander 제목이고, `messages`는 OpenAI Chat Completions 형식의
+    role/content dict 목록이다. `key_prefix`는 Streamlit widget key 충돌을
+    피하기 위한 짧은 식별자이다. 각 메시지를 role별 subheader와 text_area로
+    보여주어 실제 모델 입력을 실행 전에 검토할 수 있게 한다.
+    """
+    with st.expander(title, expanded=expanded):
+        for index, message in enumerate(messages, start=1):
+            role = message.get("role", "")
+            content = message.get("content", "")
+            st.markdown(f"**Message {index}: `{role}`**")
+            st.text_area(
+                f"{title} message {index}",
+                value=content,
+                height=220,
+                disabled=True,
+                label_visibility="collapsed",
+                key=f"llm_preview_{key_prefix}_{index}_{role}",
+            )
+
+
+def filter_llm_messages(filter_prompt, user_letter, knowledge):
+    """입력 필터 LLM 호출에 들어갈 messages 배열을 구성한다.
+
+    실제 `dd_filter_user_letter_gpt4()`와 같은 구조로 system prompt, 사용자
+    knowledge, 사용자 편지, JSON 반환 지시를 포함한다. 실행 전 preview와
+    호출 로직의 입력 구성을 맞추기 위한 helper이다.
+    """
+    user_content = f"""[사용자 Knowledge]
+{knowledge}
+
+[사용자가 작성한 편지]
+{user_letter}
+
+응답은 반드시 JSON 객체로 반환해주세요."""
+    return [
+        {"role": "system", "content": filter_prompt},
+        {"role": "user", "content": user_content},
+    ]
+
+
+def bfi_summary_llm_messages(user_row):
+    """BFI 요약 LLM 호출에 들어갈 messages 배열을 구성한다.
+
+    선택 사용자의 BFI 30문항을 실제 knowledge 생성 로직과 동일하게
+    `D1PB-*`로 재인덱싱하고, 채점 문장과 BFI 요약 system prompt를 반환한다.
+    user row가 없으면 빈 목록을 반환한다.
+    """
+    if user_row is None:
+        return []
+    new_column_names = [f"D1PB-{i}" for i in range(1, 31)]
+    bfi_series = user_row.iloc[91:121].copy()
+    bfi_series.index = new_column_names
+    bfi_summary_input = bfi_calculate_scores(bfi_series)
+    return [
+        {"role": "system", "content": read_prompt(PROMPT_ROOT / "BFI_summary_sys.txt")},
+        {"role": "user", "content": bfi_summary_input},
+    ]
+
+
+def pvq_summary_llm_messages(user_row):
+    """PVQ 요약 LLM 호출에 들어갈 messages 배열을 구성한다.
+
+    선택 사용자의 PVQ 10문항을 실제 knowledge 생성 로직과 동일하게 DataFrame으로
+    만들고, 가치별 설명 문장과 PVQ 요약 system prompt를 반환한다. user row가
+    없으면 빈 목록을 반환한다.
+    """
+    if user_row is None:
+        return []
+    new_column_names = [f"D2LP-{i}" for i in range(1, 11)]
+    pvq_raw = pd.DataFrame([user_row.iloc[121:131].values], columns=new_column_names)
+    pvq_summary_input = generate_pvq_prompt(pvq_raw)
+    return [
+        {"role": "system", "content": read_prompt(PROMPT_ROOT / "PVQ_summary_sys.txt")},
+        {"role": "user", "content": pvq_summary_input},
+    ]
+
+
+def generation_llm_messages(user_letter):
+    """답장 생성 LLM 호출에 들어갈 messages 배열을 구성한다.
+
+    system role에는 현재 답장 생성 프롬프트와 선택적 개선 지시문을, assistant
+    role에는 구조화된 knowledge를, user role에는 사용자가 작성한 편지를 넣는다.
+    """
+    return [
+        {"role": "system", "content": generation_prompt_with_improvement()},
+        {"role": "assistant", "content": st.session_state.knowledge},
+        {"role": "user", "content": user_letter},
+    ]
+
+
+def screening_llm_messages(screening_prompt, reply):
+    """답장 스크리닝 LLM 호출에 들어갈 messages 배열을 구성한다.
+
+    output filter system prompt와 검토할 생성 답장, JSON 반환 지시를 포함해
+    실제 `dd_evaluate_letter_with_prompt_gpt4()`와 같은 user message를 만든다.
+    """
+    user_content = f"""[검토할 편지]
+{reply}
+
+응답은 반드시 JSON 객체로 반환해주세요."""
+    return [
+        {"role": "system", "content": screening_prompt},
+        {"role": "user", "content": user_content},
+    ]
+
+
+def improvement_llm_messages(improvement_prompt, reply):
+    """개선 프롬프트 생성 LLM 호출에 들어갈 messages 배열을 구성한다.
+
+    improvement system prompt와 현재 생성 답장을 `[현재 답장]` 섹션으로 묶은
+    user message를 반환한다.
+    """
+    return [
+        {"role": "system", "content": improvement_prompt},
+        {"role": "user", "content": f"[현재 답장]\n{reply}"},
+    ]
+
+
 def get_user_row(extension_df):
     """현재 선택된 사용자 이름에 해당하는 DataFrame row를 반환한다.
 
@@ -1218,6 +1339,16 @@ if st.session_state.node == "select_user":
 
 elif st.session_state.node == "structure_knowledge":
     st.subheader("2. 지식 구조화")
+    render_llm_input_preview(
+        "LLM 입력 미리보기: BFI 요약",
+        bfi_summary_llm_messages(user_row),
+        "bfi_summary",
+    )
+    render_llm_input_preview(
+        "LLM 입력 미리보기: PVQ 요약",
+        pvq_summary_llm_messages(user_row),
+        "pvq_summary",
+    )
     if st.button("지식 구조화 실행", type="primary"):
         run_knowledge(user_row)
         st.rerun()
@@ -1248,6 +1379,15 @@ elif st.session_state.node == "filter_letter":
             st.write(st.session_state.knowledge)
         else:
             st.warning("knowledge가 아직 생성되지 않았습니다. 지식 구조화 노드를 먼저 실행하세요.")
+    render_llm_input_preview(
+        "LLM 입력 미리보기: 입력 필터",
+        filter_llm_messages(
+            read_prompt(st.session_state.selected_filter_prompt_path),
+            filter_letter,
+            st.session_state.knowledge,
+        ),
+        "input_filter",
+    )
     if st.button("필터링 실행", type="primary"):
         run_filter(filter_letter, st.session_state.knowledge)
         st.rerun()
@@ -1282,6 +1422,11 @@ elif st.session_state.node == "generate_reply":
     if st.session_state.improvement_prompt:
         with st.expander("이번 생성에 추가되는 개선 지시문", expanded=True):
             st.write(st.session_state.improvement_prompt)
+    render_llm_input_preview(
+        "LLM 입력 미리보기: 답장 생성",
+        generation_llm_messages(user_letter),
+        "reply_generation",
+    )
     if st.button("답장 1개 생성", type="primary"):
         run_generation(user_letter)
         st.rerun()
@@ -1297,6 +1442,14 @@ elif st.session_state.node == "screen_reply":
     render_screening_prompt_selector()
     with st.expander("생성된 답장", expanded=True):
         st.write(st.session_state.generated_reply)
+    render_llm_input_preview(
+        "LLM 입력 미리보기: 답장 스크리닝",
+        screening_llm_messages(
+            read_prompt(st.session_state.selected_screening_prompt_path),
+            st.session_state.generated_reply,
+        ),
+        "output_filter",
+    )
     if st.button("스크리닝 실행", type="primary"):
         run_screening()
         st.rerun()
@@ -1310,6 +1463,14 @@ elif st.session_state.node == "improve_prompt":
     st.subheader("7. 개선 프롬프트")
     render_improvement_prompt_selector()
     render_screening_result()
+    render_llm_input_preview(
+        "LLM 입력 미리보기: 개선 지시문 생성",
+        improvement_llm_messages(
+            read_prompt(st.session_state.selected_improvement_prompt_path),
+            st.session_state.generated_reply,
+        ),
+        "improvement",
+    )
     if st.button("개선 지시문 생성", type="primary"):
         run_improvement_prompt()
         st.rerun()
