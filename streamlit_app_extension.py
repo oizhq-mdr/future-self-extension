@@ -132,7 +132,24 @@ DEMO_REPLY = """
 DEMO_SCREENING_RESULT = {
     "status": "false",
     "summary": "데모 결과입니다. 실제 검수는 output filter 실행 버튼으로 다시 실행하세요.",
-    "quality_notes": "원본 편지의 구체적 표현과 미래 일상 장면을 더 생생하게 반영하면 좋습니다.",
+    "dimensions": {
+        "future_self_perspective": {
+            "status": "pass",
+            "note": "미래 자아 관점은 자연스럽게 유지됩니다.",
+        },
+        "personal_relevance": {
+            "status": "revise",
+            "note": "원본 편지의 구체적 고민과 질문을 조금 더 직접 반영하면 좋습니다.",
+        },
+        "tone_and_naturalness": {
+            "status": "pass",
+            "note": "편지 흐름은 대체로 자연스럽습니다.",
+        },
+        "safety_and_appropriateness": {
+            "status": "pass",
+            "note": "명백한 안전상 문제는 보이지 않습니다.",
+        },
+    },
     "suggested_revision": "문체의 결을 더 가깝게 맞추고, 미래의 하루를 한두 장면으로 구체화하세요.",
 }
 
@@ -414,19 +431,27 @@ def current_generation_prompt_text(editor_prompt=None):
     return st.session_state.get("system_prompt", "")
 
 
-def screening_llm_messages(screening_prompt, reply):
+def screening_llm_messages(screening_prompt, reply, original_letter=None, knowledge=None):
     """답장 스크리닝 LLM 호출에 들어갈 messages 배열을 구성한다.
 
-    output filter system prompt와 검토할 생성 답장, JSON 반환 지시를 포함해
-    실제 `dd_evaluate_letter_with_prompt_gpt4()`와 같은 user message를 만든다.
+    output filter system prompt와 원본 편지, background knowledge, 검토할
+    생성 답장, JSON 반환 지시를 포함해 실제
+    `dd_evaluate_letter_with_prompt_gpt4()`와 같은 user message를 만든다.
     """
-    user_content = f"""[검토할 편지]
+    context_sections = []
+    if original_letter:
+        context_sections.append(f"""[Participant's Original Letter]
+{original_letter}""")
+    if knowledge:
+        context_sections.append(f"""[Background Knowledge]
+{knowledge}""")
+    context_sections.append(f"""[Generated Future-Self Reply]
 {reply}
 
-응답은 반드시 JSON 객체로 반환해주세요."""
+응답은 반드시 JSON 객체로 반환해주세요.""")
     return [
         {"role": "system", "content": screening_prompt},
-        {"role": "user", "content": user_content},
+        {"role": "user", "content": "\n\n".join(context_sections)},
     ]
 
 
@@ -1036,6 +1061,8 @@ def run_screening():
             result = dd_evaluate_letter_with_prompt_gpt4(
                 st.session_state.generated_reply,
                 screening_prompt,
+                original_letter=st.session_state.generation_letter_editor,
+                knowledge=st.session_state.knowledge,
             )
         except openai.AuthenticationError:
             show_openai_auth_error()
@@ -1084,7 +1111,7 @@ def render_filter_result():
 def render_screening_result():
     """출력 스크리닝 결과를 사람이 읽기 쉬운 형태와 JSON 원문으로 표시한다.
 
-    `screening_result`가 없으면 렌더링하지 않는다. 판정, 요약, 품질 메모,
+    `screening_result`가 없으면 렌더링하지 않는다. 판정, 요약, 주요 dimension,
     수정 제안, 글자 수를 순서대로 표시하고, 전체 JSON은 expander 안에 넣어
     디버깅과 프롬프트 개선에 활용할 수 있게 한다.
     """
@@ -1095,7 +1122,17 @@ def render_screening_result():
         st.info(f"판정: {result['status']}")
     if result.get("summary"):
         st.write(result["summary"])
-    if result.get("quality_notes"):
+    dimensions = result.get("dimensions")
+    if isinstance(dimensions, dict):
+        for dimension_name, dimension_result in dimensions.items():
+            if not isinstance(dimension_result, dict):
+                continue
+            status = dimension_result.get("status", "-")
+            note = dimension_result.get("note", "")
+            st.write(f"**{dimension_name}**: {status}")
+            if note:
+                st.caption(note)
+    elif result.get("quality_notes"):
         st.write(result["quality_notes"])
     if result.get("suggested_revision"):
         st.write(result["suggested_revision"])
@@ -1490,6 +1527,8 @@ elif st.session_state.node == "screen_reply":
         screening_llm_messages(
             read_prompt(st.session_state.selected_screening_prompt_path),
             st.session_state.generated_reply,
+            original_letter=st.session_state.generation_letter_editor,
+            knowledge=st.session_state.knowledge,
         ),
         "output_filter",
     )

@@ -161,18 +161,27 @@ def dd_filter_user_letter_gpt4(filter_prompt, letter, knowledge):
     )
     return json.loads(completion.choices[0].message.content)
 
-def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt):
+def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt, original_letter=None, knowledge=None):
     """생성된 답장을 output filter 프롬프트로 평가하고 JSON 결과를 반환한다.
 
     `letter`는 검수할 생성 답장이고, `screening_prompt`는 output_filter
-    Markdown 파일의 내용이다. 모델 응답은 반드시 JSON 객체가 되도록
-    요청하며, 응답 문자열을 `json.loads()`로 파싱해 앱의 스크리닝 결과로
-    사용한다.
+    Markdown 파일의 내용이다. 원본 편지와 knowledge가 있으면 함께 전달해
+    light-touch 품질 검수의 맥락으로 사용한다. 모델 응답은 반드시 JSON
+    객체가 되도록 요청하며, 응답 문자열을 `json.loads()`로 파싱해 앱의
+    스크리닝 결과로 사용한다.
     """
-    user_content = f"""[검토할 편지]
+    context_sections = []
+    if original_letter:
+        context_sections.append(f"""[Participant's Original Letter]
+{original_letter}""")
+    if knowledge:
+        context_sections.append(f"""[Background Knowledge]
+{knowledge}""")
+    context_sections.append(f"""[Generated Future-Self Reply]
 {letter}
 
-응답은 반드시 JSON 객체로 반환해주세요."""
+응답은 반드시 JSON 객체로 반환해주세요.""")
+    user_content = "\n\n".join(context_sections)
 
     completion = openai.chat.completions.create(
         model=MODEL,
