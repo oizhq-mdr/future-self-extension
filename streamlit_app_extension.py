@@ -129,6 +129,16 @@ DEMO_REPLY = """
 2029년 5월, 기숙사에서 네가.
 """
 
+DEMO_BAD_REPLY = """
+안녕하세요. 귀하의 편지를 잘 읽었습니다. 현재 귀하는 진로와 미래에 대해 고민하고 있으며, 3년 뒤에는 더 나은 삶을 살고 있을 것입니다.
+
+첫째, 연구를 열심히 하십시오. 둘째, 건강 관리를 꾸준히 하십시오. 셋째, 부모님과 친구들에게 좋은 모습을 보여주십시오. 당신은 충분히 할 수 있고 반드시 성공할 것입니다.
+
+3년 뒤의 당신은 아주 훌륭한 사람이 되어 있을 것이며, 모든 문제가 해결되어 있을 것입니다. 걱정하지 말고 긍정적으로 생각하세요. 앞으로도 목표를 향해 최선을 다하면 됩니다.
+
+이상입니다.
+"""
+
 DEMO_SCREENING_RESULT = {
     "status": "false",
     "summary": "데모 결과입니다. 실제 검수는 output filter 실행 버튼으로 다시 실행하세요.",
@@ -205,6 +215,11 @@ def init_state():
         "generation_letter_editor": "",
         "_loaded_generation_letter_base_text": "",
         "generated_reply": "",
+        "output_screening_source": "생성된 답장",
+        "screening_reply_editor": "",
+        "_loaded_output_screening_source": None,
+        "_loaded_output_screening_base_text": "",
+        "screened_reply": "",
         "screening_result": None,
         "output_filter_state": None,
         "improvement_prompt": "",
@@ -600,6 +615,7 @@ def ensure_demo_outputs_for_node(target_node):
 
     if NODE_ORDER[target_node] >= NODE_ORDER["screen_reply"] and not st.session_state.generated_reply:
         st.session_state.generated_reply = DEMO_REPLY
+        st.session_state.screened_reply = DEMO_REPLY
         notices.append("데모 답장을 채웠습니다.")
 
     if NODE_ORDER[target_node] >= NODE_ORDER["improve_prompt"] and not st.session_state.screening_result:
@@ -694,6 +710,33 @@ def sync_generation_letter_editor(user_letter):
         st.session_state["_loaded_generation_letter_base_text"] = user_letter
 
 
+def selected_output_screening_reply(generated_reply):
+    """출력 필터 노드에서 검수할 답장 본문을 선택한다.
+
+    스크리닝 입력 라디오가 `저품질 답장 데모`이면 내장된 실패 예시 답장을
+    반환하고, 그렇지 않으면 실제 생성 답장 `generated_reply`를 반환한다.
+    """
+    if st.session_state.output_screening_source == "저품질 답장 데모":
+        return DEMO_BAD_REPLY
+    return generated_reply
+
+
+def sync_screening_reply_editor(generated_reply):
+    """출력 스크리닝 text_area의 기본 답장을 현재 입력 소스와 동기화한다.
+
+    실제 생성 답장과 저품질 데모 답장 사이를 전환하거나 생성 답장이 바뀌면
+    편집기 값을 새 기본 텍스트로 갱신한다. 사용자가 직접 편집한 내용은 같은
+    입력 소스/원문이 유지되는 동안 보존한다.
+    """
+    base_text = selected_output_screening_reply(generated_reply)
+    source_changed = st.session_state.get("_loaded_output_screening_source") != st.session_state.output_screening_source
+    base_changed = st.session_state.get("_loaded_output_screening_base_text") != base_text
+    if source_changed or base_changed or not st.session_state.screening_reply_editor:
+        st.session_state.screening_reply_editor = base_text
+        st.session_state["_loaded_output_screening_source"] = st.session_state.output_screening_source
+        st.session_state["_loaded_output_screening_base_text"] = base_text
+
+
 def reset_user_outputs():
     """사용자 변경 시 이전 사용자에게 속한 산출물 상태를 초기화한다.
 
@@ -710,6 +753,11 @@ def reset_user_outputs():
     st.session_state.generation_letter_editor = ""
     st.session_state["_loaded_generation_letter_base_text"] = ""
     st.session_state.generated_reply = ""
+    st.session_state.output_screening_source = "생성된 답장"
+    st.session_state.screening_reply_editor = ""
+    st.session_state["_loaded_output_screening_source"] = None
+    st.session_state["_loaded_output_screening_base_text"] = ""
+    st.session_state.screened_reply = ""
     st.session_state.screening_result = None
     st.session_state.output_filter_state = None
     st.session_state.improvement_prompt = ""
@@ -1048,25 +1096,26 @@ def run_generation(user_letter):
             show_openai_auth_error()
 
 
-def run_screening():
+def run_screening(reply):
     """생성된 답장을 output filter 프롬프트로 검수한다.
 
-    현재 `generated_reply`와 선택된 output filter 프롬프트를 OpenAI에 보내
-    JSON 평가 결과를 받고, 글자 수를 추가한 뒤 `screening_result`에 저장한다.
-    실행 완료 여부는 `output_filter_state`로 표시한다.
+    현재 스크리닝 대상으로 선택된 답장과 output filter 프롬프트를 OpenAI에
+    보내 JSON 평가 결과를 받고, 글자 수를 추가한 뒤 `screening_result`에
+    저장한다. 실행 완료 여부는 `output_filter_state`로 표시한다.
     """
     screening_prompt = read_prompt(st.session_state.selected_screening_prompt_path)
     with st.spinner("생성된 답장을 스크리닝 중..."):
         try:
             result = dd_evaluate_letter_with_prompt_gpt4(
-                st.session_state.generated_reply,
+                reply,
                 screening_prompt,
                 original_letter=st.session_state.generation_letter_editor,
                 knowledge=st.session_state.knowledge,
             )
         except openai.AuthenticationError:
             show_openai_auth_error()
-        result["char_count"] = len(st.session_state.generated_reply)
+        st.session_state.screened_reply = reply
+        result["char_count"] = len(reply)
         st.session_state.screening_result = result
         st.session_state.output_filter_state = "done"
 
@@ -1084,7 +1133,7 @@ def run_improvement_prompt():
         try:
             st.session_state.improvement_prompt = dd_generate_improvement_prompt_gpt4(
                 improvement_system_prompt,
-                st.session_state.generated_reply,
+                st.session_state.screened_reply or st.session_state.generated_reply,
             )
         except openai.AuthenticationError:
             show_openai_auth_error()
@@ -1520,20 +1569,32 @@ elif st.session_state.node == "edit_prompt":
 elif st.session_state.node == "screen_reply":
     st.subheader("5. 답장 스크리닝")
     render_screening_prompt_selector()
-    with st.expander("생성된 답장", expanded=True):
-        st.write(st.session_state.generated_reply)
+    st.radio(
+        "스크리닝 입력",
+        options=["생성된 답장", "저품질 답장 데모"],
+        key="output_screening_source",
+        horizontal=True,
+    )
+    sync_screening_reply_editor(st.session_state.generated_reply)
+    with st.expander("스크리닝할 답장", expanded=True):
+        screening_reply = st.text_area(
+            "output filter 테스트 답장",
+            value=st.session_state.screening_reply_editor,
+            height=320,
+        )
+        st.session_state.screening_reply_editor = screening_reply
     render_llm_input_preview(
         "LLM 입력 미리보기: 답장 스크리닝",
         screening_llm_messages(
             read_prompt(st.session_state.selected_screening_prompt_path),
-            st.session_state.generated_reply,
+            screening_reply,
             original_letter=st.session_state.generation_letter_editor,
             knowledge=st.session_state.knowledge,
         ),
         "output_filter",
     )
     if st.button("스크리닝 실행", type="primary"):
-        run_screening()
+        run_screening(screening_reply)
         st.rerun()
     render_screening_result()
     if st.session_state.screening_result:
@@ -1549,7 +1610,7 @@ elif st.session_state.node == "improve_prompt":
         "LLM 입력 미리보기: 개선 지시문 생성",
         improvement_llm_messages(
             read_prompt(st.session_state.selected_improvement_prompt_path),
-            st.session_state.generated_reply,
+            st.session_state.screened_reply or st.session_state.generated_reply,
         ),
         "improvement",
     )
