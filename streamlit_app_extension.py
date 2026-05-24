@@ -49,8 +49,8 @@ PROMPT_ROOT = Path("data/prompt_template")
 EXT_PROMPT_ROOT = PROMPT_ROOT / "extension_prompts"
 NODES = [
     ("select_user", "1. 사용자 선택"),
-    ("filter_letter", "2. 편지 필터링"),
-    ("structure_knowledge", "3. 지식 구조화"),
+    ("structure_knowledge", "2. 지식 구조화"),
+    ("filter_letter", "3. 편지 필터링"),
     ("edit_prompt", "4. 시스템 프롬프트"),
     ("generate_reply", "5. 답장 생성"),
     ("screen_reply", "6. 답장 스크리닝"),
@@ -383,21 +383,21 @@ def render_prompt_editor(path, label, key_prefix, height=260, sync_system_prompt
 def ensure_demo_outputs_for_node(target_node):
     """중간 노드로 바로 진입할 때 필요한 앞단 산출물을 데모 값으로 채운다.
 
-    사용자가 Node Graph에서 후속 노드를 바로 클릭하면 실제 필터링, 지식
-    구조화, 답장 생성, 스크리닝을 모두 실행하지 않았을 수 있다. 이 함수는
+    사용자가 Node Graph에서 후속 노드를 바로 클릭하면 실제 지식 구조화,
+    필터링, 답장 생성, 스크리닝을 모두 실행하지 않았을 수 있다. 이 함수는
     target node의 단계에 맞춰 최소한의 데모 결과를 채워 각 노드를 독립적으로
     QA할 수 있게 한다.
     """
     notices = []
 
-    if NODE_ORDER[target_node] >= NODE_ORDER["structure_knowledge"] and not st.session_state.filter_result:
+    if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and not st.session_state.knowledge:
+        st.session_state.knowledge = DEMO_KNOWLEDGE
+        notices.append("데모 knowledge를 채웠습니다.")
+
+    if NODE_ORDER[target_node] >= NODE_ORDER["edit_prompt"] and not st.session_state.filter_result:
         st.session_state.filter_result = DEMO_FILTER_RESULT.copy()
         st.session_state.input_filter_state = "passed"
         notices.append("데모 필터 결과를 채웠습니다.")
-
-    if NODE_ORDER[target_node] >= NODE_ORDER["edit_prompt"] and not st.session_state.knowledge:
-        st.session_state.knowledge = DEMO_KNOWLEDGE
-        notices.append("데모 knowledge를 채웠습니다.")
 
     if NODE_ORDER[target_node] >= NODE_ORDER["screen_reply"] and not st.session_state.generated_reply:
         st.session_state.generated_reply = DEMO_REPLY
@@ -420,7 +420,7 @@ def ensure_defaults_for_node(target_node, extension_df):
     session_state에 저장한다.
     """
     notices = []
-    if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and ensure_default_user(extension_df):
+    if NODE_ORDER[target_node] >= NODE_ORDER["structure_knowledge"] and ensure_default_user(extension_df):
         notices.append(f"기본 사용자로 '{st.session_state.user_name}'을 선택했습니다.")
 
     before_prompts = {
@@ -620,9 +620,9 @@ def render_node_nav(extension_df):
   <div class="resolve-canvas">
     <svg class="resolve-wires" viewBox="0 0 1940 420" preserveAspectRatio="none">
       <path class="wire main" d="M180 105 C225 105 225 105 270 105" />
-      <path class="wire danger" d="M430 105 C485 105 485 56 540 56" />
-      <path class="wire main" d="M430 105 C485 105 485 164 540 164" />
-      <path class="wire main" d="M700 164 C740 164 740 164 780 164" />
+      <path class="wire main" d="M430 105 C485 105 485 105 540 105" />
+      <path class="wire danger" d="M700 105 C740 105 740 56 780 56" />
+      <path class="wire main" d="M700 105 C740 105 740 164 780 164" />
       <path class="wire main" d="M940 164 C980 164 980 164 1020 164" />
       <path class="wire main" d="M1175 164 C1215 164 1215 164 1255 164" />
       <path class="wire main" d="M1415 164 C1455 164 1455 164 1495 164" />
@@ -631,16 +631,16 @@ def render_node_nav(extension_df):
       <path class="wire loop" d="M1900 238 C1960 238 1960 342 1255 342 C1195 342 1195 268 1255 164" />
     </svg>
     <div class="canvas-label" style="left:22px; top:26px;">INPUT</div>
-    <div class="canvas-label" style="left:528px; top:26px;">FILTER BRANCH</div>
-    <div class="canvas-label" style="left:790px; top:26px;">KNOWLEDGE</div>
+    <div class="canvas-label" style="left:282px; top:26px;">KNOWLEDGE</div>
+    <div class="canvas-label" style="left:770px; top:26px;">FILTER BRANCH</div>
     <div class="canvas-label" style="left:1016px; top:26px;">PROMPT</div>
     <div class="canvas-label" style="left:1250px; top:26px;">QA</div>
     <div class="canvas-label" style="left:1736px; top:26px;">OUTCOME</div>
     {graph_node("select_user", "User", "사용자 선택", 20, 72, state("select_user"))}
-    {graph_node("filter_letter", "Input Filter", "극단 편지 게이트", 270, 72, state("filter_letter"))}
-    {graph_note("filter_letter", "Blocked", "차단 결과 표시", 540, 24, block_state, clickable=False)}
-    {graph_note("structure_knowledge", "Passed", "통과 결과 표시", 540, 132, pass_state, clickable=False)}
-    {graph_node("structure_knowledge", "Knowledge", "BFI/PVQ 포함", 780, 132, state("structure_knowledge"))}
+    {graph_node("structure_knowledge", "Knowledge", "BFI/PVQ 포함", 270, 72, state("structure_knowledge"))}
+    {graph_node("filter_letter", "Input Filter", "편지+knowledge", 540, 72, state("filter_letter"))}
+    {graph_note("filter_letter", "Blocked", "차단 결과 표시", 780, 24, block_state, clickable=False)}
+    {graph_note("edit_prompt", "Passed", "통과 결과 표시", 780, 132, pass_state, clickable=False)}
     {graph_node("edit_prompt", "System Prompt", "생성 지시문", 1020, 132, state("edit_prompt"))}
     {graph_node("generate_reply", "Generate", "답장 1개", 1255, 132, state("generate_reply"))}
     {graph_node("screen_reply", "Output Filter", "답장 품질 검수", 1495, 132, state("screen_reply"))}
@@ -655,10 +655,10 @@ def render_node_nav(extension_df):
     with status_cols[0]:
         render_status_pill("사용자 선택", bool(st.session_state.user_name))
     with status_cols[1]:
+        render_status_pill("지식 생성", bool(st.session_state.knowledge))
+    with status_cols[2]:
         filter_ok = bool(st.session_state.filter_result)
         render_status_pill("필터 완료", filter_ok)
-    with status_cols[2]:
-        render_status_pill("지식 생성", bool(st.session_state.knowledge))
     with status_cols[3]:
         render_status_pill("답장 생성", bool(st.session_state.generated_reply))
     with status_cols[4]:
@@ -778,17 +778,21 @@ def render_improvement_prompt_selector():
     )
 
 
-def run_filter(user_letter):
-    """현재 선택된 input filter 프롬프트로 사용자 편지를 스크리닝한다.
+def run_filter(user_letter, knowledge):
+    """현재 선택된 input filter 프롬프트로 사용자 편지와 knowledge를 함께 스크리닝한다.
 
-    편집기에서 확정된 `user_letter`를 OpenAI에 보내 고위험/극단적 내용 여부를
-    JSON으로 평가한다. 결과 dict는 `filter_result`에 저장하고, status가
-    `차단`이면 `input_filter_state`를 blocked로, 그 외에는 passed로 설정한다.
+    편집기에서 확정된 `user_letter`와 앞단에서 생성한 `knowledge`를 OpenAI에
+    함께 보내 고위험/극단적 내용 여부를 JSON으로 평가한다. 결과 dict는
+    `filter_result`에 저장하고, status가 `차단`이면 `input_filter_state`를
+    blocked로, 그 외에는 passed로 설정한다.
     """
+    if not knowledge:
+        st.warning("입력 필터를 실행하기 전에 먼저 지식 구조화를 실행하세요.")
+        st.stop()
     filter_prompt = read_prompt(st.session_state.selected_filter_prompt_path)
     with st.spinner("사용자 편지의 고위험 내용을 필터링 중..."):
         try:
-            result = dd_filter_user_letter_gpt4(filter_prompt, user_letter)
+            result = dd_filter_user_letter_gpt4(filter_prompt, user_letter, knowledge)
         except openai.AuthenticationError:
             show_openai_auth_error()
         st.session_state.filter_result = result
@@ -1204,16 +1208,27 @@ if st.session_state.node == "select_user":
             else 0,
             key="user_radio",
         )
-        submit = st.form_submit_button("선택하고 편지 필터링으로 이동")
+        submit = st.form_submit_button("선택하고 지식 구조화로 이동")
     if submit:
         if st.session_state.user_name != user_name:
             reset_user_outputs()
         st.session_state.user_name = user_name
-        st.session_state.node = "filter_letter"
+        st.session_state.node = "structure_knowledge"
         st.rerun()
 
+elif st.session_state.node == "structure_knowledge":
+    st.subheader("2. 지식 구조화")
+    if st.button("지식 구조화 실행", type="primary"):
+        run_knowledge(user_row)
+        st.rerun()
+    if st.session_state.knowledge:
+        st.write(st.session_state.knowledge)
+        if st.button("편지 필터링으로 이동"):
+            st.session_state.node = "filter_letter"
+            st.rerun()
+
 elif st.session_state.node == "filter_letter":
-    st.subheader("2. 사용자가 작성한 편지 필터링")
+    st.subheader("3. 사용자가 작성한 편지와 지식 필터링")
     render_filter_prompt_selector()
     st.radio(
         "필터 입력",
@@ -1228,24 +1243,18 @@ elif st.session_state.node == "filter_letter":
         height=260,
     )
     st.session_state.filter_letter_editor = filter_letter
+    with st.expander("필터에 함께 들어가는 사용자 knowledge", expanded=False):
+        if st.session_state.knowledge:
+            st.write(st.session_state.knowledge)
+        else:
+            st.warning("knowledge가 아직 생성되지 않았습니다. 지식 구조화 노드를 먼저 실행하세요.")
     if st.button("필터링 실행", type="primary"):
-        run_filter(filter_letter)
+        run_filter(filter_letter, st.session_state.knowledge)
         st.rerun()
     render_filter_result()
-    if st.button("지식 구조화로 이동", type="primary"):
-        st.session_state.node = "structure_knowledge"
+    if st.session_state.filter_result and st.button("시스템 프롬프트로 이동", type="primary"):
+        st.session_state.node = "edit_prompt"
         st.rerun()
-
-elif st.session_state.node == "structure_knowledge":
-    st.subheader("3. 지식 구조화")
-    if st.button("지식 구조화 실행", type="primary"):
-        run_knowledge(user_row)
-        st.rerun()
-    if st.session_state.knowledge:
-        st.write(st.session_state.knowledge)
-        if st.button("시스템 프롬프트로 이동"):
-            st.session_state.node = "edit_prompt"
-            st.rerun()
 
 elif st.session_state.node == "edit_prompt":
     st.subheader("4. 시스템 프롬프트 조정")

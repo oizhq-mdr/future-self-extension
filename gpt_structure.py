@@ -127,14 +127,18 @@ def dd_safeguard_gpt4(safeguard_prompt, replies_text):
     )
     return completion.choices[0].message.content
 
-def dd_filter_user_letter_gpt4(filter_prompt, letter):
-    """사용자 편지를 입력 필터 프롬프트로 검사하고 JSON 결과를 반환한다.
+def dd_filter_user_letter_gpt4(filter_prompt, letter, knowledge):
+    """사용자 편지와 knowledge를 입력 필터 프롬프트로 검사하고 JSON 결과를 반환한다.
 
     `filter_prompt`는 input_filter Markdown 파일의 내용이고, `letter`는
-    필터링할 사용자 편지 텍스트이다. JSON mode를 사용하므로 user 메시지에
-    JSON 객체 반환 지시를 함께 넣고, 모델 응답을 `dict`로 파싱해 반환한다.
+    필터링할 사용자 편지 텍스트이며, `knowledge`는 같은 사용자에게서
+    구조화한 배경 정보이다. JSON mode를 사용하므로 user 메시지에 JSON 객체
+    반환 지시를 함께 넣고, 모델 응답을 `dict`로 파싱해 반환한다.
     """
-    user_content = f"""[사용자가 작성한 편지]
+    user_content = f"""[사용자 Knowledge]
+{knowledge}
+
+[사용자가 작성한 편지]
 {letter}
 
 응답은 반드시 JSON 객체로 반환해주세요."""
