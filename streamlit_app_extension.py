@@ -212,16 +212,6 @@ def read_prompt(path):
     return prompt_path.read_text(encoding="utf-8")
 
 
-def write_prompt(path, content):
-    """앱 프롬프트 편집기에서 수정한 내용을 UTF-8 파일로 저장한다.
-
-    `path`는 선택된 Markdown 프롬프트 파일 경로이고, `content`는 text_area의
-    최신 값이다. 저장 버튼을 눌렀을 때 호출되어 로컬/배포 repo의 프롬프트
-    파일 내용을 갱신한다.
-    """
-    Path(path).write_text(content, encoding="utf-8")
-
-
 def prompt_options(category, default_path=None):
     """프롬프트 카테고리에 속한 Markdown 파일 목록을 selectbox 옵션으로 만든다.
 
@@ -517,12 +507,13 @@ def sync_generation_prompt_from_selection():
 
 
 def render_prompt_editor(path, label, key_prefix, height=260, sync_system_prompt=False):
-    """선택된 프롬프트 파일을 편집하고 저장하는 공통 UI를 렌더링한다.
+    """선택된 프롬프트 파일 내용을 확인하고 세션 안에서만 편집하는 공통 UI를 렌더링한다.
 
-    파일 경로가 바뀌면 파일 내용을 text_area에 로드하고, 저장 버튼을 누르면
-    수정된 내용을 같은 경로에 쓴다. 답장 생성 프롬프트처럼 모델 system prompt와
-    즉시 연결되어야 하는 경우 `sync_system_prompt=True`로 session_state도
-    함께 갱신한다.
+    파일 경로가 바뀌면 파일 내용을 text_area에 로드한다. 사용자가 text_area에서
+    수정한 내용은 현재 Streamlit 세션의 LLM 입력에는 반영되지만, 파일 시스템이나
+    GitHub repo에는 저장하지 않는다. 답장 생성 프롬프트처럼 모델 system prompt와
+    즉시 연결되어야 하는 경우 `sync_system_prompt=True`로 session_state도 함께
+    갱신한다.
     """
     editor_key = f"{key_prefix}_editor"
     loaded_key = f"{key_prefix}_loaded_path"
@@ -537,11 +528,6 @@ def render_prompt_editor(path, label, key_prefix, height=260, sync_system_prompt
     )
     if sync_system_prompt:
         st.session_state.system_prompt = edited_prompt
-    if st.button("프롬프트 저장", key=f"{key_prefix}_save"):
-        write_prompt(path, edited_prompt)
-        if sync_system_prompt:
-            st.session_state["_loaded_generation_prompt"] = path
-        st.success("프롬프트를 저장했습니다.")
     return edited_prompt
 
 
