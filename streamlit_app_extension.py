@@ -52,10 +52,9 @@ NODES = [
     ("select_user", "1. 사용자 선택"),
     ("structure_knowledge", "2. 지식 구조화"),
     ("filter_letter", "3. 편지 필터링"),
-    ("edit_prompt", "4. 시스템 프롬프트"),
-    ("generate_reply", "5. 답장 생성"),
-    ("screen_reply", "6. 답장 스크리닝"),
-    ("improve_prompt", "7. 개선 프롬프트"),
+    ("edit_prompt", "4. GENERATING REPLY"),
+    ("screen_reply", "5. 답장 스크리닝"),
+    ("improve_prompt", "6. 개선 프롬프트"),
 ]
 NODE_ORDER = {node_id: index for index, (node_id, _) in enumerate(NODES)}
 
@@ -719,8 +718,6 @@ def graph_node_state(node_id):
         return "ready"
     if node_id == "edit_prompt" and st.session_state.system_prompt:
         return "ready"
-    if node_id == "generate_reply" and st.session_state.generated_reply:
-        return "ready"
     if node_id == "screen_reply" and st.session_state.screening_result:
         return "ready"
     if node_id == "improve_prompt" and st.session_state.improvement_prompt:
@@ -799,28 +796,26 @@ def render_node_nav(extension_df):
       <path class="wire danger" d="M700 105 C740 105 740 56 780 56" />
       <path class="wire main" d="M700 105 C740 105 740 164 780 164" />
       <path class="wire main" d="M940 164 C980 164 980 164 1020 164" />
-      <path class="wire main" d="M1175 164 C1215 164 1215 164 1255 164" />
-      <path class="wire main" d="M1415 164 C1455 164 1455 164 1495 164" />
-      <path class="wire success" d="M1655 164 C1698 164 1698 92 1740 92" />
-      <path class="wire loop" d="M1655 164 C1698 164 1698 238 1740 238" />
-      <path class="wire loop" d="M1900 238 C1960 238 1960 342 1255 342 C1195 342 1195 268 1255 164" />
+      <path class="wire main" d="M1175 164 C1235 164 1235 164 1295 164" />
+      <path class="wire success" d="M1455 164 C1500 164 1500 92 1545 92" />
+      <path class="wire loop" d="M1455 164 C1500 164 1500 238 1545 238" />
+      <path class="wire loop" d="M1705 238 C1765 238 1765 342 1020 342 C960 342 960 268 1020 164" />
     </svg>
     <div class="canvas-label" style="left:22px; top:26px;">INPUT</div>
     <div class="canvas-label" style="left:282px; top:26px;">KNOWLEDGE</div>
     <div class="canvas-label" style="left:770px; top:26px;">FILTER BRANCH</div>
     <div class="canvas-label" style="left:1016px; top:26px;">PROMPT</div>
-    <div class="canvas-label" style="left:1250px; top:26px;">QA</div>
-    <div class="canvas-label" style="left:1736px; top:26px;">OUTCOME</div>
+    <div class="canvas-label" style="left:1290px; top:26px;">QA</div>
+    <div class="canvas-label" style="left:1540px; top:26px;">OUTCOME</div>
     {graph_node("select_user", "User", "사용자 선택", 20, 72, state("select_user"))}
     {graph_node("structure_knowledge", "Knowledge", "BFI/PVQ 포함", 270, 72, state("structure_knowledge"))}
     {graph_node("filter_letter", "Input Filter", "편지+knowledge", 540, 72, state("filter_letter"))}
     {graph_note("filter_letter", "Blocked", "차단 결과 표시", 780, 24, block_state, clickable=False)}
     {graph_note("edit_prompt", "Passed", "통과 결과 표시", 780, 132, pass_state, clickable=False)}
-    {graph_node("edit_prompt", "System Prompt", "생성 지시문", 1020, 132, state("edit_prompt"))}
-    {graph_node("generate_reply", "Generate", "답장 1개", 1255, 132, state("generate_reply"))}
-    {graph_node("screen_reply", "Output Filter", "답장 품질 검수", 1495, 132, state("screen_reply"))}
-    {graph_note("screen_reply", "Final", "통과 후보", 1740, 60, final_state)}
-    {graph_node("improve_prompt", "Improve", "개선 지시문", 1740, 206, state("improve_prompt"))}
+    {graph_node("edit_prompt", "System Prompt", "프롬프트+생성", 1020, 132, state("edit_prompt"))}
+    {graph_node("screen_reply", "Output Filter", "답장 품질 검수", 1295, 132, state("screen_reply"))}
+    {graph_note("screen_reply", "Final", "통과 후보", 1545, 60, final_state)}
+    {graph_node("improve_prompt", "Improve", "개선 지시문", 1545, 206, state("improve_prompt"))}
   </div>
 </div>
 """
@@ -1366,6 +1361,8 @@ html, body, [class*="css"], g {
 )
 
 init_state()
+if st.session_state.node not in NODE_ORDER:
+    st.session_state.node = "select_user"
 extension_df = load_data()
 ensure_default_prompts()
 sync_node_from_query_params(extension_df)
@@ -1451,26 +1448,6 @@ elif st.session_state.node == "edit_prompt":
     st.subheader("4. GENERATING REPLY")
     edited_generation_prompt = render_generation_prompt_selector()
     current_generation_prompt = current_generation_prompt_text(edited_generation_prompt)
-    if st.session_state.improvement_prompt:
-        with st.expander("현재 적용 중인 개선 지시문", expanded=True):
-            st.write(st.session_state.improvement_prompt)
-            if st.button("개선 지시문 제거"):
-                st.session_state.improvement_prompt = ""
-                st.rerun()
-    render_llm_input_preview(
-        "LLM 입력 미리보기: GENERATING REPLY",
-        generation_llm_messages(
-            st.session_state.generation_letter_editor or user_letter_to_agent,
-            current_generation_prompt,
-        ),
-        "generating_reply_setup",
-    )
-    if st.button("답장 생성으로 이동", type="primary"):
-        st.session_state.node = "generate_reply"
-        st.rerun()
-
-elif st.session_state.node == "generate_reply":
-    st.subheader("5. 답장 생성")
     sync_generation_letter_editor(user_letter_to_agent)
     with st.expander("사용자가 작성한 편지", expanded=True):
         user_letter = st.text_area(
@@ -1480,12 +1457,18 @@ elif st.session_state.node == "generate_reply":
         )
         st.session_state.generation_letter_editor = user_letter
     if st.session_state.improvement_prompt:
-        with st.expander("이번 생성에 추가되는 개선 지시문", expanded=True):
+        with st.expander("현재 적용 중인 개선 지시문", expanded=True):
             st.write(st.session_state.improvement_prompt)
+            if st.button("개선 지시문 제거"):
+                st.session_state.improvement_prompt = ""
+                st.rerun()
     render_llm_input_preview(
-        "LLM 입력 미리보기: 답장 생성",
-        generation_llm_messages(user_letter),
-        "reply_generation",
+        "LLM 입력 미리보기: GENERATING REPLY",
+        generation_llm_messages(
+            user_letter,
+            current_generation_prompt,
+        ),
+        "generating_reply_setup",
     )
     if st.button("답장 1개 생성", type="primary"):
         run_generation(user_letter)
@@ -1498,7 +1481,7 @@ elif st.session_state.node == "generate_reply":
             st.rerun()
 
 elif st.session_state.node == "screen_reply":
-    st.subheader("6. 답장 스크리닝")
+    st.subheader("5. 답장 스크리닝")
     render_screening_prompt_selector()
     with st.expander("생성된 답장", expanded=True):
         st.write(st.session_state.generated_reply)
@@ -1520,7 +1503,7 @@ elif st.session_state.node == "screen_reply":
             st.rerun()
 
 elif st.session_state.node == "improve_prompt":
-    st.subheader("7. 개선 프롬프트")
+    st.subheader("6. 개선 프롬프트")
     render_improvement_prompt_selector()
     render_screening_result()
     render_llm_input_preview(
@@ -1541,6 +1524,6 @@ elif st.session_state.node == "improve_prompt":
             height=220,
         )
         st.session_state.improvement_prompt = edited_improvement_prompt
-        if st.button("적용하고 답장 생성으로 이동", type="primary"):
-            st.session_state.node = "generate_reply"
+        if st.button("적용하고 시스템 프롬프트로 이동", type="primary"):
+            st.session_state.node = "edit_prompt"
             st.rerun()
