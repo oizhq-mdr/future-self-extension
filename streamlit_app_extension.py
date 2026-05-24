@@ -388,14 +388,16 @@ def pvq_summary_llm_messages(user_row):
     ]
 
 
-def generation_llm_messages(user_letter):
+def generation_llm_messages(user_letter, system_prompt=None):
     """답장 생성 LLM 호출에 들어갈 messages 배열을 구성한다.
 
     system role에는 현재 답장 생성 프롬프트와 선택적 개선 지시문을, assistant
     role에는 구조화된 knowledge를, user role에는 사용자가 작성한 편지를 넣는다.
+    `system_prompt`를 넘기면 session_state 대신 해당 프롬프트를 기준으로
+    미리보기/호출 메시지를 구성한다.
     """
     return [
-        {"role": "system", "content": generation_prompt_with_improvement()},
+        {"role": "system", "content": generation_prompt_with_improvement(system_prompt)},
         {"role": "assistant", "content": st.session_state.knowledge},
         {"role": "user", "content": user_letter},
     ]
@@ -540,6 +542,7 @@ def render_prompt_editor(path, label, key_prefix, height=260, sync_system_prompt
         if sync_system_prompt:
             st.session_state["_loaded_generation_prompt"] = path
         st.success("프롬프트를 저장했습니다.")
+    return edited_prompt
 
 
 def ensure_demo_outputs_for_node(target_node):
@@ -887,7 +890,7 @@ def render_generation_prompt_selector():
     )
     sync_generation_prompt_from_selection()
     if st.session_state.selected_generation_prompt_path:
-        render_prompt_editor(
+        return render_prompt_editor(
             st.session_state.selected_generation_prompt_path,
             "선택한 답장 생성 프롬프트 파일 내용",
             "generation_prompt",
@@ -896,6 +899,7 @@ def render_generation_prompt_selector():
         )
     else:
         st.info("답장 생성 프롬프트 파일을 선택하면 내용을 확인하고 수정할 수 있습니다.")
+        return ""
 
 
 def render_screening_prompt_selector():
@@ -975,14 +979,14 @@ def run_knowledge(user_row):
             show_openai_auth_error()
 
 
-def generation_prompt_with_improvement():
+def generation_prompt_with_improvement(system_prompt=None):
     """현재 답장 생성 system prompt에 개선 지시문을 조건부로 덧붙인다.
 
     기본값은 `st.session_state.system_prompt`이며, 개선 프롬프트 노드에서 만든
     `improvement_prompt`가 있으면 `[Additional revision guidance]` 섹션으로
     이어 붙여 다음 답장 생성에 반영한다.
     """
-    system_prompt = st.session_state.system_prompt
+    system_prompt = st.session_state.system_prompt if system_prompt is None else system_prompt
     if st.session_state.improvement_prompt:
         return f"{system_prompt}\n\n[Additional revision guidance]\n{st.session_state.improvement_prompt}"
     return system_prompt
@@ -1430,7 +1434,7 @@ elif st.session_state.node == "filter_letter":
 
 elif st.session_state.node == "edit_prompt":
     st.subheader("4. GENERATING REPLY")
-    render_generation_prompt_selector()
+    current_generation_prompt = render_generation_prompt_selector()
     if st.session_state.improvement_prompt:
         with st.expander("현재 적용 중인 개선 지시문", expanded=True):
             st.write(st.session_state.improvement_prompt)
@@ -1439,7 +1443,10 @@ elif st.session_state.node == "edit_prompt":
                 st.rerun()
     render_llm_input_preview(
         "LLM 입력 미리보기: GENERATING REPLY",
-        generation_llm_messages(st.session_state.generation_letter_editor or user_letter_to_agent),
+        generation_llm_messages(
+            st.session_state.generation_letter_editor or user_letter_to_agent,
+            current_generation_prompt,
+        ),
         "generating_reply_setup",
     )
     if st.button("답장 생성으로 이동", type="primary"):
