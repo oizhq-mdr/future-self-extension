@@ -7,6 +7,7 @@ import streamlit as st
 
 from ext_knowledge_structure import *
 from gpt_structure import (
+    build_filter_user_content,
     dd_evaluate_letter_with_prompt_gpt4,
     dd_filter_user_letter_gpt4,
     dd_generate_gpt4_basic,
@@ -297,17 +298,66 @@ def filter_llm_messages(filter_prompt, user_letter, knowledge):
     knowledge, 사용자 편지, JSON 반환 지시를 포함한다. 실행 전 preview와
     호출 로직의 입력 구성을 맞추기 위한 helper이다.
     """
-    user_content = f"""[사용자 Knowledge]
-{knowledge}
-
-[사용자가 작성한 편지]
-{user_letter}
-
-응답은 반드시 JSON 객체로 반환해주세요."""
+    user_content = build_filter_user_content(user_letter, knowledge)
     return [
         {"role": "system", "content": filter_prompt},
         {"role": "user", "content": user_content},
     ]
+
+
+def render_input_screening_preview(filter_prompt, user_letter, knowledge):
+    """INPUT SCREENING에 들어가는 LLM 입력을 섹션별로 확실하게 표시한다.
+
+    실제 API 호출은 system prompt 하나와 user message 하나를 사용하지만,
+    user message 안의 knowledge가 길어 편지가 안 보일 수 있으므로 preview에서는
+    system prompt, knowledge, user letter, JSON 지시를 별도 박스로 나눠 보여준다.
+    """
+    with st.expander("LLM 입력 미리보기: INPUT SCREENING", expanded=False):
+        st.markdown("**Message 1: `system` - input filter prompt**")
+        st.text_area(
+            "input screening system prompt preview",
+            value=filter_prompt,
+            height=220,
+            disabled=True,
+            label_visibility="collapsed",
+            key="llm_preview_input_screening_system",
+        )
+        st.markdown("**Message 2: `user` 섹션 1 - 사용자 Knowledge**")
+        st.text_area(
+            "input screening knowledge preview",
+            value=f"[사용자 Knowledge]\n{knowledge}",
+            height=260,
+            disabled=True,
+            label_visibility="collapsed",
+            key="llm_preview_input_screening_knowledge",
+        )
+        st.markdown("**Message 2: `user` 섹션 2 - 사용자가 작성한 편지**")
+        st.text_area(
+            "input screening user letter preview",
+            value=f"[사용자가 작성한 편지]\n{user_letter}",
+            height=260,
+            disabled=True,
+            label_visibility="collapsed",
+            key="llm_preview_input_screening_user_letter",
+        )
+        st.markdown("**Message 2: `user` 섹션 3 - 응답 형식 지시**")
+        st.text_area(
+            "input screening json instruction preview",
+            value="응답은 반드시 JSON 객체로 반환해주세요.",
+            height=90,
+            disabled=True,
+            label_visibility="collapsed",
+            key="llm_preview_input_screening_json_instruction",
+        )
+        with st.expander("실제 전송되는 user message 전체", expanded=False):
+            st.text_area(
+                "input screening complete user message preview",
+                value=build_filter_user_content(user_letter, knowledge),
+                height=360,
+                disabled=True,
+                label_visibility="collapsed",
+                key="llm_preview_input_screening_complete_user_message",
+            )
 
 
 def bfi_summary_llm_messages(user_row):
@@ -1359,7 +1409,7 @@ elif st.session_state.node == "structure_knowledge":
             st.rerun()
 
 elif st.session_state.node == "filter_letter":
-    st.subheader("3. 사용자가 작성한 편지와 지식 필터링")
+    st.subheader("3. INPUT SCREENING")
     render_filter_prompt_selector()
     st.radio(
         "필터 입력",
@@ -1379,14 +1429,10 @@ elif st.session_state.node == "filter_letter":
             st.write(st.session_state.knowledge)
         else:
             st.warning("knowledge가 아직 생성되지 않았습니다. 지식 구조화 노드를 먼저 실행하세요.")
-    render_llm_input_preview(
-        "LLM 입력 미리보기: 입력 필터",
-        filter_llm_messages(
-            read_prompt(st.session_state.selected_filter_prompt_path),
-            filter_letter,
-            st.session_state.knowledge,
-        ),
-        "input_filter",
+    render_input_screening_preview(
+        read_prompt(st.session_state.selected_filter_prompt_path),
+        filter_letter,
+        st.session_state.knowledge,
     )
     if st.button("필터링 실행", type="primary"):
         run_filter(filter_letter, st.session_state.knowledge)

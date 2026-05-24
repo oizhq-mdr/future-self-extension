@@ -5,6 +5,22 @@ import json
 
 MODEL = "gpt-5"
 
+
+def build_filter_user_content(letter, knowledge):
+    """입력 필터의 user role content를 구성한다.
+
+    사용자 knowledge와 사용자 편지를 명시적인 섹션으로 분리하고, JSON mode가
+    안정적으로 동작하도록 JSON 객체 반환 지시를 마지막에 포함한다.
+    """
+    return f"""[사용자 Knowledge]
+{knowledge}
+
+[사용자가 작성한 편지]
+{letter}
+
+응답은 반드시 JSON 객체로 반환해주세요."""
+
+
 def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt):
     """미래 자아 답장 본문을 생성한다.
 
@@ -135,13 +151,7 @@ def dd_filter_user_letter_gpt4(filter_prompt, letter, knowledge):
     구조화한 배경 정보이다. JSON mode를 사용하므로 user 메시지에 JSON 객체
     반환 지시를 함께 넣고, 모델 응답을 `dict`로 파싱해 반환한다.
     """
-    user_content = f"""[사용자 Knowledge]
-{knowledge}
-
-[사용자가 작성한 편지]
-{letter}
-
-응답은 반드시 JSON 객체로 반환해주세요."""
+    user_content = build_filter_user_content(letter, knowledge)
 
     completion = openai.chat.completions.create(
         model=MODEL,
