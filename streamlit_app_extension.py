@@ -52,7 +52,7 @@ NODES = [
     ("select_user", "1. 사용자 선택"),
     ("structure_knowledge", "2. 지식 구조화"),
     ("filter_letter", "3. 편지 필터링"),
-    ("edit_prompt", "4. GENERATING REPLY"),
+    ("edit_prompt", "4. 시스템 프롬프트/답장 생성"),
     ("screen_reply", "5. 답장 스크리닝"),
     ("improve_prompt", "6. 개선 프롬프트"),
 ]
@@ -1445,7 +1445,7 @@ elif st.session_state.node == "filter_letter":
         st.rerun()
 
 elif st.session_state.node == "edit_prompt":
-    st.subheader("4. GENERATING REPLY")
+    st.subheader("4. 시스템 프롬프트 / 답장 생성")
     edited_generation_prompt = render_generation_prompt_selector()
     current_generation_prompt = current_generation_prompt_text(edited_generation_prompt)
     sync_generation_letter_editor(user_letter_to_agent)
@@ -1463,7 +1463,7 @@ elif st.session_state.node == "edit_prompt":
                 st.session_state.improvement_prompt = ""
                 st.rerun()
     render_llm_input_preview(
-        "LLM 입력 미리보기: GENERATING REPLY",
+        "LLM 입력 미리보기: 답장 생성",
         generation_llm_messages(
             user_letter,
             current_generation_prompt,
