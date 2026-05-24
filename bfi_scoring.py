@@ -1,4 +1,10 @@
 def bfi_score_to_level(score):
+    """BFI 평균 점수를 사람이 읽기 쉬운 수준 라벨로 변환한다.
+
+    1~7 범위의 점수를 받아 very low부터 very high까지의 영어 설명으로
+    매핑한다. 점수가 예상 범위를 벗어나면 out of range를 반환해 상위
+    채점 로직에서 비정상 값을 식별할 수 있게 한다.
+    """
     if 1 <= score < 2:
         return 'very low'
     elif score < 3:
@@ -15,6 +21,13 @@ def bfi_score_to_level(score):
         return 'out of range'
 
 def bfi_calculate_scores(data):
+    """BFI 30개 문항 응답을 도메인/패싯별 자연어 요약 입력으로 변환한다.
+
+    `data`는 `D1PB-1`부터 `D1PB-30`까지의 문항 값을 가진 Series 또는
+    dict-like 객체로 들어온다. 역채점 문항을 반영해 Big Five 5개
+    도메인과 각 하위 패싯의 평균 수준을 계산한 뒤, LLM 요약 함수에
+    넘기기 좋은 문장 묶음 문자열을 반환한다.
+    """
     # Convert all data values to integers first
     data = {key: int(value) for key, value in data.items()}
 

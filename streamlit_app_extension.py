@@ -15,6 +15,12 @@ from gpt_structure import (
 
 
 def configure_openai_api_key():
+    """Streamlit secrets 또는 환경변수에서 OpenAI API 키를 읽어 SDK에 설정한다.
+
+    배포 환경에서는 Streamlit Cloud Secrets의 `OPENAI_API_KEY`를 우선 사용하고,
+    로컬 실행에서는 기존 환경변수도 fallback으로 허용한다. 키가 없거나
+    placeholder 값이면 앱 화면에 안내 메시지를 띄우고 실행을 중단한다.
+    """
     api_key = str(st.secrets.get("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY", ""))).strip()
     if not api_key or api_key == "your-api-key":
         st.error("OpenAI API key가 설정되지 않았습니다. Streamlit Cloud Secrets에 OPENAI_API_KEY를 추가하세요.")
@@ -27,6 +33,12 @@ configure_openai_api_key()
 
 
 def show_openai_auth_error():
+    """OpenAI 인증 실패를 Streamlit 사용자에게 설명하고 앱 실행을 중단한다.
+
+    Streamlit Cloud는 원본 예외 메시지를 redaction하므로, 사용자가 확인해야
+    할 API 키 유효성, 만료 여부, 프로젝트 권한, 결제 설정을 앱 화면에서
+    직접 안내한다.
+    """
     st.error(
         "OpenAI 인증에 실패했습니다. Streamlit Cloud Secrets의 OPENAI_API_KEY가 올바른지, "
         "키가 만료/폐기되지 않았는지, 해당 프로젝트에 모델 사용 권한과 결제 설정이 있는지 확인하세요."
@@ -139,12 +151,25 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
+    """Google Sheets CSV에서 extension 실험 데이터를 읽어 DataFrame으로 반환한다.
+
+    Streamlit cache를 사용해 같은 세션에서 반복 로드 비용을 줄인다. 반환된
+    DataFrame은 사용자 선택, 편지 본문 추출, 지식 구조화의 원천 데이터로
+    사용된다.
+    """
     return pd.read_csv(
         "https://docs.google.com/spreadsheets/d/1MN6NmPU_DjJR2zYZ5Ct_SwiOuuvGXkpXBjT9DJYRYyQ/export?format=csv"
     )
 
 
 def init_state():
+    """Streamlit session_state에 앱 전체에서 사용하는 기본 상태값을 초기화한다.
+
+    현재 노드, 선택 사용자, knowledge, 프롬프트 선택 경로, 편지 편집기,
+    필터/스크리닝 결과, 개선 지시문 등 노드 QA 흐름에 필요한 키를 한 번만
+    설정한다. 이미 존재하는 값은 유지해 rerun 시 사용자 입력이 사라지지
+    않게 한다.
+    """
     defaults = {
         "node": "select_user",
         "user_name": None,
@@ -175,6 +200,11 @@ def init_state():
 
 
 def read_prompt(path):
+    """지정한 프롬프트 파일을 UTF-8 텍스트로 읽는다.
+
+    파일이 없으면 예외를 내지 않고 빈 문자열을 반환해, 선택 경로가 아직
+    준비되지 않은 상태에서도 앱 UI가 깨지지 않도록 한다.
+    """
     prompt_path = Path(path)
     if not prompt_path.exists():
         return ""
@@ -182,10 +212,23 @@ def read_prompt(path):
 
 
 def write_prompt(path, content):
+    """앱 프롬프트 편집기에서 수정한 내용을 UTF-8 파일로 저장한다.
+
+    `path`는 선택된 Markdown 프롬프트 파일 경로이고, `content`는 text_area의
+    최신 값이다. 저장 버튼을 눌렀을 때 호출되어 로컬/배포 repo의 프롬프트
+    파일 내용을 갱신한다.
+    """
     Path(path).write_text(content, encoding="utf-8")
 
 
 def prompt_options(category, default_path=None):
+    """프롬프트 카테고리에 속한 Markdown 파일 목록을 selectbox 옵션으로 만든다.
+
+    `category`는 `input_filter`, `output_filter`, `improvement`,
+    `reply_generation` 중 하나이며, 해당 폴더의 모든 `.md` 파일을 정렬해
+    문자열 경로 목록으로 반환한다. `default_path`가 존재하면 목록 맨 앞에
+    추가해 기본 프롬프트를 우선 노출할 수 있다.
+    """
     files = []
     category_dir = EXT_PROMPT_ROOT / category
     if category_dir.exists():
@@ -196,11 +239,23 @@ def prompt_options(category, default_path=None):
 
 
 def set_prompt_default(key, options):
+    """프롬프트 선택 상태가 비어 있거나 유효하지 않을 때 첫 옵션으로 보정한다.
+
+    Streamlit selectbox는 현재 값이 옵션 목록에 있어야 안정적으로 렌더링되므로,
+    `st.session_state[key]`가 `options` 안에 없으면 첫 번째 프롬프트 경로를
+    기본값으로 설정한다.
+    """
     if options and st.session_state.get(key) not in options:
         st.session_state[key] = options[0]
 
 
 def prompt_label(path):
+    """프롬프트 파일 경로를 UI에 표시하기 좋은 짧은 라벨로 변환한다.
+
+    extension 프롬프트 하위 폴더에 있는 파일은 `카테고리/파일명` 형태로
+    보여주고, 그 외 파일은 파일명만 표시한다. selectbox의 `format_func`로
+    사용된다.
+    """
     prompt_path = Path(path)
     if prompt_path.parent.name in {
         "input_filter",
@@ -213,6 +268,12 @@ def prompt_label(path):
 
 
 def get_user_row(extension_df):
+    """현재 선택된 사용자 이름에 해당하는 DataFrame row를 반환한다.
+
+    `st.session_state.user_name`이 비어 있거나 DataFrame에서 매칭되는 행이
+    없으면 `None`을 반환한다. 이후 편지 추출과 knowledge 생성 함수들이 이
+    row를 입력으로 사용한다.
+    """
     if not st.session_state.user_name:
         return None
     matches = extension_df[extension_df.iloc[:, 0] == st.session_state.user_name]
@@ -222,6 +283,12 @@ def get_user_row(extension_df):
 
 
 def default_user_name(extension_df):
+    """데이터셋에서 첫 번째 유효 사용자 이름을 기본 사용자로 반환한다.
+
+    사용자 선택 없이 후속 노드에 직접 접근했을 때 앱이 자동으로 사용할
+    fallback 사용자 이름을 결정한다. 사용 가능한 이름이 없으면 `None`을
+    반환한다.
+    """
     names = extension_df.iloc[:, 0].dropna().unique()
     if len(names) == 0:
         return None
@@ -229,6 +296,12 @@ def default_user_name(extension_df):
 
 
 def ensure_default_user(extension_df):
+    """현재 선택 사용자가 없거나 유효하지 않으면 기본 사용자로 교체한다.
+
+    URL로 중간 노드에 직접 들어온 경우에도 노드 QA가 진행되도록 첫 번째
+    사용자 이름을 session_state에 채운다. 사용자가 바뀌면 이전 산출물이
+    섞이지 않도록 관련 결과 상태를 초기화한다.
+    """
     fallback_user = default_user_name(extension_df)
     if not fallback_user:
         return False
@@ -244,6 +317,12 @@ def ensure_default_user(extension_df):
 
 
 def ensure_default_prompts():
+    """필터, 스크리닝, 개선 프롬프트 선택값을 유효한 기본값으로 보정한다.
+
+    각 프롬프트 카테고리의 `.md` 파일 목록을 읽고 session_state에 저장된
+    선택 경로가 옵션에 없으면 첫 파일로 설정한다. 답장 생성 프롬프트가
+    이미 선택되어 있으면 해당 파일 내용을 `system_prompt`에 동기화한다.
+    """
     filter_options = prompt_options("input_filter")
     screening_options = prompt_options("output_filter")
     improvement_options = prompt_options("improvement")
@@ -261,6 +340,12 @@ def ensure_default_prompts():
 
 
 def sync_generation_prompt_from_selection():
+    """답장 생성 프롬프트 선택이 바뀌었을 때 편집기와 system prompt를 동기화한다.
+
+    사용자가 reply_generation selectbox에서 다른 파일을 고르면 해당 파일
+    내용을 읽어 `st.session_state.system_prompt`에 반영한다. 이미 같은 파일을
+    로드한 상태라면 불필요한 덮어쓰기를 하지 않는다.
+    """
     selected_generation = st.session_state.selected_generation_prompt_path
     if selected_generation and st.session_state.get("_loaded_generation_prompt") != selected_generation:
         st.session_state.system_prompt = read_prompt(selected_generation)
@@ -268,6 +353,13 @@ def sync_generation_prompt_from_selection():
 
 
 def render_prompt_editor(path, label, key_prefix, height=260, sync_system_prompt=False):
+    """선택된 프롬프트 파일을 편집하고 저장하는 공통 UI를 렌더링한다.
+
+    파일 경로가 바뀌면 파일 내용을 text_area에 로드하고, 저장 버튼을 누르면
+    수정된 내용을 같은 경로에 쓴다. 답장 생성 프롬프트처럼 모델 system prompt와
+    즉시 연결되어야 하는 경우 `sync_system_prompt=True`로 session_state도
+    함께 갱신한다.
+    """
     editor_key = f"{key_prefix}_editor"
     loaded_key = f"{key_prefix}_loaded_path"
     if st.session_state.get(loaded_key) != path:
@@ -289,6 +381,13 @@ def render_prompt_editor(path, label, key_prefix, height=260, sync_system_prompt
 
 
 def ensure_demo_outputs_for_node(target_node):
+    """중간 노드로 바로 진입할 때 필요한 앞단 산출물을 데모 값으로 채운다.
+
+    사용자가 Node Graph에서 후속 노드를 바로 클릭하면 실제 필터링, 지식
+    구조화, 답장 생성, 스크리닝을 모두 실행하지 않았을 수 있다. 이 함수는
+    target node의 단계에 맞춰 최소한의 데모 결과를 채워 각 노드를 독립적으로
+    QA할 수 있게 한다.
+    """
     notices = []
 
     if NODE_ORDER[target_node] >= NODE_ORDER["structure_knowledge"] and not st.session_state.filter_result:
@@ -313,6 +412,13 @@ def ensure_demo_outputs_for_node(target_node):
 
 
 def ensure_defaults_for_node(target_node, extension_df):
+    """특정 노드 접근 전에 사용자, 프롬프트, 데모 산출물 기본값을 준비한다.
+
+    URL query parameter나 그래프 클릭으로 임의 노드에 접근했을 때도 앱이
+    빈 상태로 깨지지 않도록 기본 사용자를 선택하고, 프롬프트 선택값을 보정하며,
+    필요한 경우 데모 산출물을 채운다. 적용된 자동 보정 내용은 안내 문구로
+    session_state에 저장한다.
+    """
     notices = []
     if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and ensure_default_user(extension_df):
         notices.append(f"기본 사용자로 '{st.session_state.user_name}'을 선택했습니다.")
@@ -338,18 +444,35 @@ def ensure_defaults_for_node(target_node, extension_df):
 
 
 def get_user_letter(user_row):
+    """선택된 사용자 row에서 답장 생성/필터링에 사용할 편지 본문을 추출한다.
+
+    현재 데이터 구조에서는 사용자 편지가 `row.iloc[146]`에 있다고 가정한다.
+    모델과 프롬프트가 편지 영역을 명확히 구분할 수 있도록 `[User Letter]`
+    헤더를 붙인 문자열을 반환한다.
+    """
     if user_row is None:
         return ""
     return "**[User Letter]**\n" + str(user_row.iloc[146])
 
 
 def selected_filter_letter(user_letter):
+    """입력 필터 노드에서 사용할 편지 원문을 선택한다.
+
+    필터 입력 라디오가 `극단 편지 데모`이면 내장된 고위험 예시 편지를
+    반환하고, 그렇지 않으면 실제 사용자 편지 `user_letter`를 반환한다.
+    """
     if st.session_state.filter_input_source == "극단 편지 데모":
         return DEMO_EXTREME_LETTER
     return user_letter
 
 
 def sync_filter_letter_editor(user_letter):
+    """필터 테스트 text_area의 기본 편지를 현재 입력 소스와 동기화한다.
+
+    실제 사용자 편지와 극단 편지 데모 사이를 전환하거나 원본 편지가 바뀌면
+    편집기 값을 새 기본 텍스트로 갱신한다. 사용자가 직접 편집한 내용은 같은
+    입력 소스/원문이 유지되는 동안 불필요하게 덮어쓰지 않는다.
+    """
     base_text = selected_filter_letter(user_letter)
     source_changed = st.session_state.get("_loaded_filter_input_source") != st.session_state.filter_input_source
     base_changed = st.session_state.get("_loaded_filter_base_text") != base_text
@@ -360,6 +483,12 @@ def sync_filter_letter_editor(user_letter):
 
 
 def sync_generation_letter_editor(user_letter):
+    """답장 생성 text_area의 기본 편지를 선택 사용자 편지와 동기화한다.
+
+    사용자가 바뀌어 원본 편지가 달라지면 답장 생성용 편집기 값을 새 편지로
+    초기화한다. 같은 사용자 안에서 사용자가 편집한 편지 내용은 rerun 중에도
+    유지한다.
+    """
     base_changed = st.session_state.get("_loaded_generation_letter_base_text") != user_letter
     if base_changed or not st.session_state.generation_letter_editor:
         st.session_state.generation_letter_editor = user_letter
@@ -367,6 +496,12 @@ def sync_generation_letter_editor(user_letter):
 
 
 def reset_user_outputs():
+    """사용자 변경 시 이전 사용자에게 속한 산출물 상태를 초기화한다.
+
+    knowledge, 필터 결과, 생성 답장, 스크리닝 결과, 개선 지시문과 편지
+    편집기 로딩 기준을 모두 비워서 새 사용자 데이터와 이전 결과가 섞이지
+    않도록 한다.
+    """
     st.session_state.knowledge = ""
     st.session_state.filter_result = None
     st.session_state.input_filter_state = None
@@ -382,11 +517,23 @@ def reset_user_outputs():
 
 
 def render_status_pill(label, ready):
+    """노드 진행 상태를 작은 pill 형태의 HTML 배지로 표시한다.
+
+    `ready`가 참이면 완료 스타일을, 거짓이면 비어 있는 상태 스타일을 적용한다.
+    그래프 아래 요약 상태 영역에서 사용자 선택, 필터, 지식 생성, 답장 생성,
+    스크리닝 완료 여부를 빠르게 보여주는 데 사용된다.
+    """
     css_class = "ready" if ready else "empty"
     st.markdown(f'<span class="status-pill {css_class}">{label}</span>', unsafe_allow_html=True)
 
 
 def graph_node_state(node_id):
+    """노드 ID에 대응하는 현재 그래프 표시 상태를 계산한다.
+
+    현재 열려 있는 노드는 active, 산출물이 있는 노드는 ready, 차단된 입력
+    필터는 blocked, 개선 프롬프트가 있는 노드는 loop로 표시한다. 산출물이
+    없으면 empty를 반환해 Node Graph의 CSS 클래스에 사용한다.
+    """
     if st.session_state.node == node_id:
         return "active"
     if node_id == "select_user" and st.session_state.user_name:
@@ -407,6 +554,12 @@ def graph_node_state(node_id):
 
 
 def graph_node(node_id, title, subtitle, x, y, state, width=160):
+    """Node Graph에서 클릭 가능한 주요 노드 HTML 조각을 생성한다.
+
+    노드 ID, 제목, 부제, 좌표, 상태 CSS 클래스, 너비를 받아 absolute
+    positioning된 anchor 태그 문자열을 반환한다. 클릭 시 `?node=...` query
+    parameter로 이동해 해당 노드를 열도록 구성한다.
+    """
     href = f"?node={node_id}"
     return f"""
 <a class="resolve-node {state}" href="{href}" target="_self" style="left:{x}px; top:{y}px; width:{width}px;">
@@ -419,6 +572,12 @@ def graph_node(node_id, title, subtitle, x, y, state, width=160):
 
 
 def graph_note(node_id, title, subtitle, x, y, state="empty", width=150, clickable=True):
+    """Node Graph에서 분기/결과를 설명하는 보조 노드 HTML 조각을 생성한다.
+
+    차단, 통과, 최종 후보 같은 주요 노드 사이의 상태를 표현한다. `clickable`이
+    참이면 anchor로 렌더링하고, 거짓이면 단순 div로 렌더링해 상태 표시만
+    수행한다.
+    """
     href = f"?node={node_id}"
     tag = "a" if clickable else "div"
     href_attr = f' href="{href}" target="_self"' if clickable else ""
@@ -433,6 +592,12 @@ def graph_note(node_id, title, subtitle, x, y, state="empty", width=150, clickab
 
 
 def render_node_nav(extension_df):
+    """앱 상단의 전체 Node Graph와 진행 상태 요약 UI를 렌더링한다.
+
+    현재 session_state를 바탕으로 각 노드의 active/ready/blocked/loop 상태를
+    계산하고, SVG wire와 HTML node를 조합해 QA 흐름을 시각화한다. 그래프 아래
+    status pill과 자동 기본값 적용 안내 문구도 함께 표시한다.
+    """
     state = graph_node_state
     block_state = "blocked" if st.session_state.input_filter_state == "blocked" else "empty"
     pass_state = "ready" if st.session_state.input_filter_state == "passed" else "empty"
@@ -504,6 +669,12 @@ def render_node_nav(extension_df):
 
 
 def sync_node_from_query_params(extension_df):
+    """URL query parameter의 `node` 값을 session_state의 현재 노드와 동기화한다.
+
+    Node Graph의 링크 클릭처럼 `?node=...`가 들어온 경우 유효한 노드인지
+    확인하고, 필요한 기본값과 데모 산출물을 준비한 뒤 현재 노드를 변경한다.
+    같은 query 값을 반복 처리하지 않도록 `_synced_query_node`를 기록한다.
+    """
     node_from_url = st.query_params.get("node")
     if isinstance(node_from_url, list):
         node_from_url = node_from_url[0] if node_from_url else None
@@ -514,6 +685,12 @@ def sync_node_from_query_params(extension_df):
 
 
 def render_filter_prompt_selector():
+    """입력 필터 프롬프트 선택 UI와 편집기를 렌더링한다.
+
+    `extension_prompts/input_filter` 폴더의 Markdown 파일을 selectbox에 표시하고,
+    선택된 파일 내용을 text_area에서 확인/수정/저장할 수 있게 한다. 이
+    프롬프트는 사용자 편지의 고위험 여부를 판단하는 system prompt로 쓰인다.
+    """
     filter_options = prompt_options("input_filter")
     st.selectbox(
         "사용자 편지 필터 프롬프트",
@@ -529,6 +706,12 @@ def render_filter_prompt_selector():
 
 
 def render_generation_prompt_selector():
+    """답장 생성 프롬프트 선택 UI와 system prompt 편집기를 렌더링한다.
+
+    `extension_prompts/reply_generation` 폴더의 Markdown 파일을 선택하게 하고,
+    선택된 파일 내용을 `st.session_state.system_prompt`와 동기화한다. 저장 시
+    파일 내용과 현재 생성 system prompt가 함께 갱신된다.
+    """
     generation_options = prompt_options("reply_generation")
     current_selection = st.session_state.get("selected_generation_prompt_path")
     selection_index = generation_options.index(current_selection) if current_selection in generation_options else None
@@ -554,6 +737,12 @@ def render_generation_prompt_selector():
 
 
 def render_screening_prompt_selector():
+    """출력 스크리닝 프롬프트 선택 UI와 편집기를 렌더링한다.
+
+    `extension_prompts/output_filter` 폴더의 Markdown 파일을 선택하고 편집할 수
+    있게 한다. 선택된 프롬프트는 생성된 답장을 JSON 형태로 품질 평가하는
+    system prompt로 사용된다.
+    """
     screening_options = prompt_options("output_filter")
     st.selectbox(
         "답장 스크리닝 프롬프트",
@@ -569,6 +758,12 @@ def render_screening_prompt_selector():
 
 
 def render_improvement_prompt_selector():
+    """개선 지시문 생성 프롬프트 선택 UI와 편집기를 렌더링한다.
+
+    `extension_prompts/improvement` 폴더의 Markdown 파일을 선택하고 편집할 수
+    있게 한다. 선택된 프롬프트는 현재 답장을 분석해 다음 생성에 붙일 revision
+    guidance를 만드는 데 사용된다.
+    """
     improvement_options = prompt_options("improvement")
     st.selectbox(
         "개선 프롬프트 생성 프롬프트",
@@ -584,6 +779,12 @@ def render_improvement_prompt_selector():
 
 
 def run_filter(user_letter):
+    """현재 선택된 input filter 프롬프트로 사용자 편지를 스크리닝한다.
+
+    편집기에서 확정된 `user_letter`를 OpenAI에 보내 고위험/극단적 내용 여부를
+    JSON으로 평가한다. 결과 dict는 `filter_result`에 저장하고, status가
+    `차단`이면 `input_filter_state`를 blocked로, 그 외에는 passed로 설정한다.
+    """
     filter_prompt = read_prompt(st.session_state.selected_filter_prompt_path)
     with st.spinner("사용자 편지의 고위험 내용을 필터링 중..."):
         try:
@@ -595,6 +796,12 @@ def run_filter(user_letter):
 
 
 def run_knowledge(user_row):
+    """선택 사용자 row를 기반으로 답장 생성용 knowledge를 생성한다.
+
+    `ext_knowledge_generate()`를 호출해 demographics, 선호/비선호, BFI, PVQ,
+    미래 프로필을 하나의 문자열로 구성하고 `st.session_state.knowledge`에
+    저장한다. OpenAI 인증 오류가 발생하면 사용자 친화 메시지로 중단한다.
+    """
     with st.spinner("지식을 구조화하는 중..."):
         try:
             st.session_state.knowledge = ext_knowledge_generate(user_row)
@@ -603,6 +810,12 @@ def run_knowledge(user_row):
 
 
 def generation_prompt_with_improvement():
+    """현재 답장 생성 system prompt에 개선 지시문을 조건부로 덧붙인다.
+
+    기본값은 `st.session_state.system_prompt`이며, 개선 프롬프트 노드에서 만든
+    `improvement_prompt`가 있으면 `[Additional revision guidance]` 섹션으로
+    이어 붙여 다음 답장 생성에 반영한다.
+    """
     system_prompt = st.session_state.system_prompt
     if st.session_state.improvement_prompt:
         return f"{system_prompt}\n\n[Additional revision guidance]\n{st.session_state.improvement_prompt}"
@@ -610,6 +823,13 @@ def generation_prompt_with_improvement():
 
 
 def run_generation(user_letter):
+    """사용자 편지, knowledge, system prompt를 이용해 답장 1개를 생성한다.
+
+    새 답장을 만들기 전에 이전 스크리닝 결과를 비우고, `dd_generate_gpt4_basic()`에
+    system prompt, 구조화 knowledge, 사용자 편지를 전달한다. 생성 결과는
+    `st.session_state.generated_reply`에 저장되어 화면과 후속 스크리닝 노드에서
+    사용된다.
+    """
     st.session_state.screening_result = None
     st.session_state.output_filter_state = None
     with st.spinner("답장 1개를 생성하는 중..."):
@@ -624,6 +844,12 @@ def run_generation(user_letter):
 
 
 def run_screening():
+    """생성된 답장을 output filter 프롬프트로 검수한다.
+
+    현재 `generated_reply`와 선택된 output filter 프롬프트를 OpenAI에 보내
+    JSON 평가 결과를 받고, 글자 수를 추가한 뒤 `screening_result`에 저장한다.
+    실행 완료 여부는 `output_filter_state`로 표시한다.
+    """
     screening_prompt = read_prompt(st.session_state.selected_screening_prompt_path)
     with st.spinner("생성된 답장을 스크리닝 중..."):
         try:
@@ -639,6 +865,13 @@ def run_screening():
 
 
 def run_improvement_prompt():
+    """현재 생성 답장을 바탕으로 다음 생성용 개선 지시문을 만든다.
+
+    선택된 improvement 프롬프트와 `generated_reply`를 OpenAI에 보내 revision
+    guidance를 생성하고 `st.session_state.improvement_prompt`에 저장한다. 이
+    값은 이후 `generation_prompt_with_improvement()`를 통해 system prompt에
+    추가된다.
+    """
     improvement_system_prompt = read_prompt(st.session_state.selected_improvement_prompt_path)
     with st.spinner("다음 생성을 위한 개선 지시문을 만드는 중..."):
         try:
@@ -651,6 +884,12 @@ def run_improvement_prompt():
 
 
 def render_filter_result():
+    """입력 필터 실행 결과를 Streamlit 화면에 표시한다.
+
+    `filter_result`가 없으면 아무것도 렌더링하지 않는다. 결과 status가 `차단`
+    이면 error 스타일로, 그 외에는 success 스타일로 요약을 보여주고 전체 JSON
+    결과를 `st.json()`으로 표시한다.
+    """
     result = st.session_state.filter_result
     if not result:
         return
@@ -663,6 +902,12 @@ def render_filter_result():
 
 
 def render_screening_result():
+    """출력 스크리닝 결과를 사람이 읽기 쉬운 형태와 JSON 원문으로 표시한다.
+
+    `screening_result`가 없으면 렌더링하지 않는다. 판정, 요약, 품질 메모,
+    수정 제안, 글자 수를 순서대로 표시하고, 전체 JSON은 expander 안에 넣어
+    디버깅과 프롬프트 개선에 활용할 수 있게 한다.
+    """
     result = st.session_state.screening_result
     if not result:
         return

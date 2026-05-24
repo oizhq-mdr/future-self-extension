@@ -4,6 +4,13 @@ from bfi_scoring import *
 from gpt_structure import pvq_summary_gpt4, bfi_summary_gpt4
 
 def ext_future_profile_generate(row):
+    """사용자의 3년 후 미래 프로필 섹션을 생성한다.
+
+    Google Sheets에서 읽은 한 사용자 row의 미래 자아 관련 응답
+    `row.iloc[137:146]`을 `profile_at_20.txt` 템플릿에 채워 넣는다.
+    결과 문자열은 extension 앱의 knowledge 중 `[Profile in Three Years]`
+    계열 정보를 구성하는 데 사용된다.
+    """
     lib_file = 'data/prompt_template/profile_at_20.txt'
     with open(lib_file, "r") as f:
         future_profile_template = f.read()
@@ -22,6 +29,13 @@ def ext_future_profile_generate(row):
     return future_profile
 
 def ext_demo_generate(row):
+    """사용자의 인구통계학 정보 섹션을 생성한다.
+
+    row의 나이, 성별, 건강/장애 여부, 국적, 거주지, 교육 수준, 소득,
+    생활 형태, 형제자매 수 응답을 `demo.txt` 템플릿에 넣는다. 이름은
+    개인정보 노출을 피하기 위해 Participant로 고정하며, 건강상 어려움이
+    있는 경우 영향 설명을 추가한다.
+    """
     lib_file = 'data/prompt_template/demo.txt'
     with open(lib_file, "r") as f:
         demo_template = f.read()
@@ -45,6 +59,13 @@ def ext_demo_generate(row):
     return demo
 
 def ext_bfi_generate(row, system_prompt=None):
+    """BFI 응답을 채점하고 성격 특성 요약 섹션을 생성한다.
+
+    row의 BFI 30문항(`row.iloc[91:121]`)을 `D1PB-*` 키로 재구성한 뒤
+    `bfi_calculate_scores()`로 점수 문장을 만들고 `bfi_summary_gpt4()`로
+    자연어 요약을 생성한다. `system_prompt`가 주어지면 기본 BFI 요약
+    프롬프트 대신 해당 프롬프트를 사용한다.
+    """
     bfi_intro = '''
 
 **[Big 5 Personality Traits in 2025]**
@@ -60,6 +81,12 @@ The following section presents an overview of the person's personality within fi
     return bfi_intro + bfi_summary
 
 def ext_pvq_generate(row, system_prompt=None):
+    """PVQ 응답을 채점하고 삶의 가치 요약 섹션을 생성한다.
+
+    row의 PVQ 10문항(`row.iloc[121:131]`)을 DataFrame으로 재구성해
+    가치별 설명 문장을 만든 뒤 `pvq_summary_gpt4()`로 요약한다.
+    `system_prompt`가 주어지면 기본 PVQ 요약 프롬프트 대신 사용한다.
+    """
     pvq_intro = '''
 
 **[Life-guiding Principles in 2025]**
@@ -73,6 +100,11 @@ The information provided below is the values that reflect the relative importanc
     return pvq_intro + pvq_summary
 
 def ext_love_hate_generate(row):
+    """사용자가 좋아하는 것과 싫어하는 것 섹션을 생성한다.
+
+    row의 선호 항목 3개와 비선호 항목 3개(`row.iloc[131:137]`)를
+    `love_hate.txt` 템플릿에 넣어 knowledge에 포함할 문자열을 만든다.
+    """
     lib_file = 'data/prompt_template/love_hate.txt'
     with open(lib_file, "r") as f:
         love_hate_template = f.read()
@@ -88,6 +120,12 @@ def ext_love_hate_generate(row):
     return love_hate
 
 def ext_knowledge_generate(row, bfi_system_prompt=None, pvq_system_prompt=None):
+    """extension 앱에서 답장 생성에 사용할 통합 knowledge를 만든다.
+
+    인구통계, 선호/비선호, BFI 요약, PVQ 요약, 3년 후 미래 프로필을
+    순서대로 생성해 빈 줄로 이어 붙인다. 반환된 문자열은 OpenAI 요청에서
+    assistant role 메시지로 전달되어 답장 생성의 배경 정보가 된다.
+    """
     demo = ext_demo_generate(row)
     love_hate = ext_love_hate_generate(row)
     bfi = ext_bfi_generate(row, system_prompt=bfi_system_prompt)

@@ -1,4 +1,10 @@
 def pvq_calculate_scores(data):
+    """PVQ 10개 가치 문항의 카테고리별 평균 점수를 계산한다.
+
+    `data`는 `D2LP-1`부터 `D2LP-10`까지의 열을 가진 DataFrame이다.
+    각 문항이 하나의 가치 범주에 대응하므로 범주별 평균을 계산해
+    `{가치명: 점수}` 형태의 dict로 반환한다.
+    """
     pvq_scoring = {
         'Conformity': ['D2LP-1'],
         'Tradition': ['D2LP-2'],
@@ -18,6 +24,12 @@ def pvq_calculate_scores(data):
     return scores
 
 def generate_pvq_prompt(data):
+    """PVQ 점수를 LLM 요약에 사용할 가치 설명 문장으로 변환한다.
+
+    `pvq_calculate_scores()`의 결과를 바탕으로 각 가치가 사용자의 삶과
+    의사결정에서 어느 정도 중요한지 영어 문장으로 풀어 쓴다. 반환값은
+    PVQ 요약 모델에 전달되는 1차 텍스트 프롬프트이다.
+    """
     scores = pvq_calculate_scores(data)
     pvq_template = ""
     for key, score in scores.items():
