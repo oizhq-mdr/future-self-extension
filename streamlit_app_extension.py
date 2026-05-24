@@ -1424,11 +1424,6 @@ elif st.session_state.node == "filter_letter":
         height=260,
     )
     st.session_state.filter_letter_editor = filter_letter
-    with st.expander("필터에 함께 들어가는 사용자 knowledge", expanded=False):
-        if st.session_state.knowledge:
-            st.write(st.session_state.knowledge)
-        else:
-            st.warning("knowledge가 아직 생성되지 않았습니다. 지식 구조화 노드를 먼저 실행하세요.")
     render_input_screening_preview(
         read_prompt(st.session_state.selected_filter_prompt_path),
         filter_letter,
