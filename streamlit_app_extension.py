@@ -337,20 +337,20 @@ def ensure_defaults_for_node(target_node, extension_df):
     st.session_state.default_notice = " ".join(notices)
 
 
-def get_first_letter(user_row):
+def get_user_letter(user_row):
     if user_row is None:
         return ""
-    return "**[First Letter to Twenty-Year-Old Self]**\n" + str(user_row.iloc[146])
+    return "**[User Letter]**\n" + str(user_row.iloc[146])
 
 
-def selected_filter_letter(first_letter):
+def selected_filter_letter(user_letter):
     if st.session_state.filter_input_source == "극단 편지 데모":
         return DEMO_EXTREME_LETTER
-    return first_letter
+    return user_letter
 
 
-def sync_filter_letter_editor(first_letter):
-    base_text = selected_filter_letter(first_letter)
+def sync_filter_letter_editor(user_letter):
+    base_text = selected_filter_letter(user_letter)
     source_changed = st.session_state.get("_loaded_filter_input_source") != st.session_state.filter_input_source
     base_changed = st.session_state.get("_loaded_filter_base_text") != base_text
     if source_changed or base_changed or not st.session_state.filter_letter_editor:
@@ -359,11 +359,11 @@ def sync_filter_letter_editor(first_letter):
         st.session_state["_loaded_filter_base_text"] = base_text
 
 
-def sync_generation_letter_editor(first_letter):
-    base_changed = st.session_state.get("_loaded_generation_letter_base_text") != first_letter
+def sync_generation_letter_editor(user_letter):
+    base_changed = st.session_state.get("_loaded_generation_letter_base_text") != user_letter
     if base_changed or not st.session_state.generation_letter_editor:
-        st.session_state.generation_letter_editor = first_letter
-        st.session_state["_loaded_generation_letter_base_text"] = first_letter
+        st.session_state.generation_letter_editor = user_letter
+        st.session_state["_loaded_generation_letter_base_text"] = user_letter
 
 
 def reset_user_outputs():
@@ -583,11 +583,11 @@ def render_improvement_prompt_selector():
     )
 
 
-def run_filter(first_letter):
+def run_filter(user_letter):
     filter_prompt = read_prompt(st.session_state.selected_filter_prompt_path)
     with st.spinner("사용자 편지의 고위험 내용을 필터링 중..."):
         try:
-            result = dd_filter_user_letter_gpt4(filter_prompt, first_letter)
+            result = dd_filter_user_letter_gpt4(filter_prompt, user_letter)
         except openai.AuthenticationError:
             show_openai_auth_error()
         st.session_state.filter_result = result
@@ -609,7 +609,7 @@ def generation_prompt_with_improvement():
     return system_prompt
 
 
-def run_generation(first_letter):
+def run_generation(user_letter):
     st.session_state.screening_result = None
     st.session_state.output_filter_state = None
     with st.spinner("답장 1개를 생성하는 중..."):
@@ -617,7 +617,7 @@ def run_generation(first_letter):
             st.session_state.generated_reply = dd_generate_gpt4_basic(
                 generation_prompt_with_improvement(),
                 st.session_state.knowledge,
-                first_letter,
+                user_letter,
             )
         except openai.AuthenticationError:
             show_openai_auth_error()
@@ -942,7 +942,7 @@ sync_node_from_query_params(extension_df)
 if st.session_state.node != "select_user":
     ensure_defaults_for_node(st.session_state.node, extension_df)
 user_row = get_user_row(extension_df)
-first_letter_to_agent = get_first_letter(user_row)
+user_letter_to_agent = get_user_letter(user_row)
 
 st.title("[FutureSelf Extension] Node QA")
 render_node_nav(extension_df)
@@ -976,7 +976,7 @@ elif st.session_state.node == "filter_letter":
         key="filter_input_source",
         horizontal=True,
     )
-    sync_filter_letter_editor(first_letter_to_agent)
+    sync_filter_letter_editor(user_letter_to_agent)
     filter_letter = st.text_area(
         "필터 테스트 편지",
         value=st.session_state.filter_letter_editor,
@@ -1017,19 +1017,19 @@ elif st.session_state.node == "edit_prompt":
 
 elif st.session_state.node == "generate_reply":
     st.subheader("5. 답장 생성")
-    sync_generation_letter_editor(first_letter_to_agent)
+    sync_generation_letter_editor(user_letter_to_agent)
     with st.expander("사용자가 작성한 편지", expanded=True):
-        generation_letter = st.text_area(
+        user_letter_for_generation = st.text_area(
             "답장 생성에 사용할 사용자 편지",
             value=st.session_state.generation_letter_editor,
             height=260,
         )
-        st.session_state.generation_letter_editor = generation_letter
+        st.session_state.generation_letter_editor = user_letter_for_generation
     if st.session_state.improvement_prompt:
         with st.expander("이번 생성에 추가되는 개선 지시문", expanded=True):
             st.write(st.session_state.improvement_prompt)
     if st.button("답장 1개 생성", type="primary"):
-        run_generation(generation_letter)
+        run_generation(user_letter_for_generation)
         st.rerun()
     if st.session_state.generated_reply:
         st.markdown("### 생성된 답장")
