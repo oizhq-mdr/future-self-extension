@@ -1019,17 +1019,17 @@ elif st.session_state.node == "generate_reply":
     st.subheader("5. 답장 생성")
     sync_generation_letter_editor(user_letter_to_agent)
     with st.expander("사용자가 작성한 편지", expanded=True):
-        user_letter_for_generation = st.text_area(
+        user_letter = st.text_area(
             "답장 생성에 사용할 사용자 편지",
             value=st.session_state.generation_letter_editor,
             height=260,
         )
-        st.session_state.generation_letter_editor = user_letter_for_generation
+        st.session_state.generation_letter_editor = user_letter
     if st.session_state.improvement_prompt:
         with st.expander("이번 생성에 추가되는 개선 지시문", expanded=True):
             st.write(st.session_state.improvement_prompt)
     if st.button("답장 1개 생성", type="primary"):
-        run_generation(user_letter_for_generation)
+        run_generation(user_letter)
         st.rerun()
     if st.session_state.generated_reply:
         st.markdown("### 생성된 답장")
