@@ -393,6 +393,28 @@ def generation_llm_messages(user_letter, system_prompt=None):
     ]
 
 
+def current_generation_prompt_text(editor_prompt=None):
+    """현재 답장 생성 단계에서 사용할 system prompt 텍스트를 반환한다.
+
+    우선순위는 방금 렌더링된 편집기 값, session_state의 편집기 값, 선택된
+    reply_generation 파일 내용, 마지막으로 `st.session_state.system_prompt`다.
+    Streamlit rerun 타이밍 때문에 편집기 값이 아직 동기화되지 않은 순간에도
+    LLM 입력 미리보기의 system 메시지가 비지 않도록 보정한다.
+    """
+    if editor_prompt:
+        return editor_prompt
+
+    session_editor_prompt = st.session_state.get("generation_prompt_editor")
+    if session_editor_prompt:
+        return session_editor_prompt
+
+    selected_generation = st.session_state.get("selected_generation_prompt_path")
+    if selected_generation:
+        return read_prompt(selected_generation)
+
+    return st.session_state.get("system_prompt", "")
+
+
 def screening_llm_messages(screening_prompt, reply):
     """답장 스크리닝 LLM 호출에 들어갈 messages 배열을 구성한다.
 
@@ -471,17 +493,19 @@ def ensure_default_user(extension_df):
 
 
 def ensure_default_prompts():
-    """필터, 스크리닝, 개선 프롬프트 선택값을 유효한 기본값으로 보정한다.
+    """필터, 생성, 스크리닝, 개선 프롬프트 선택값을 유효한 기본값으로 보정한다.
 
     각 프롬프트 카테고리의 `.md` 파일 목록을 읽고 session_state에 저장된
     선택 경로가 옵션에 없으면 첫 파일로 설정한다. 답장 생성 프롬프트가
     이미 선택되어 있으면 해당 파일 내용을 `system_prompt`에 동기화한다.
     """
     filter_options = prompt_options("input_filter")
+    generation_options = prompt_options("reply_generation")
     screening_options = prompt_options("output_filter")
     improvement_options = prompt_options("improvement")
 
     set_prompt_default("selected_filter_prompt_path", filter_options)
+    set_prompt_default("selected_generation_prompt_path", generation_options)
     set_prompt_default("selected_screening_prompt_path", screening_options)
     set_prompt_default("selected_improvement_prompt_path", improvement_options)
 
@@ -860,12 +884,17 @@ def render_generation_prompt_selector():
     """답장 생성 프롬프트 선택 UI와 system prompt 편집기를 렌더링한다.
 
     `extension_prompts/reply_generation` 폴더의 Markdown 파일을 선택하게 하고,
-    선택된 파일 내용을 `st.session_state.system_prompt`와 동기화한다. 저장 시
-    파일 내용과 현재 생성 system prompt가 함께 갱신된다.
+    선택된 파일 내용을 `st.session_state.system_prompt`와 동기화한다. 편집기
+    수정값은 현재 세션의 생성 system prompt에 즉시 반영된다.
     """
     generation_options = prompt_options("reply_generation")
     current_selection = st.session_state.get("selected_generation_prompt_path")
-    selection_index = generation_options.index(current_selection) if current_selection in generation_options else None
+    if current_selection in generation_options:
+        selection_index = generation_options.index(current_selection)
+    elif generation_options:
+        selection_index = 0
+    else:
+        selection_index = None
     st.selectbox(
         "답장 생성 프롬프트",
         options=generation_options,
@@ -972,7 +1001,7 @@ def generation_prompt_with_improvement(system_prompt=None):
     `improvement_prompt`가 있으면 `[Additional revision guidance]` 섹션으로
     이어 붙여 다음 답장 생성에 반영한다.
     """
-    system_prompt = st.session_state.system_prompt if system_prompt is None else system_prompt
+    system_prompt = current_generation_prompt_text() if system_prompt is None else system_prompt
     if st.session_state.improvement_prompt:
         return f"{system_prompt}\n\n[Additional revision guidance]\n{st.session_state.improvement_prompt}"
     return system_prompt
@@ -1420,7 +1449,8 @@ elif st.session_state.node == "filter_letter":
 
 elif st.session_state.node == "edit_prompt":
     st.subheader("4. GENERATING REPLY")
-    current_generation_prompt = render_generation_prompt_selector()
+    edited_generation_prompt = render_generation_prompt_selector()
+    current_generation_prompt = current_generation_prompt_text(edited_generation_prompt)
     if st.session_state.improvement_prompt:
         with st.expander("현재 적용 중인 개선 지시문", expanded=True):
             st.write(st.session_state.improvement_prompt)
