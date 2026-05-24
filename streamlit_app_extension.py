@@ -340,15 +340,6 @@ def render_input_screening_preview(filter_prompt, user_letter, knowledge):
             label_visibility="collapsed",
             key="llm_preview_input_screening_user_letter",
         )
-        st.markdown("**Message 2: `user` 섹션 3 - 응답 형식 지시**")
-        st.text_area(
-            "input screening json instruction preview",
-            value="응답은 반드시 JSON 객체로 반환해주세요.",
-            height=90,
-            disabled=True,
-            label_visibility="collapsed",
-            key="llm_preview_input_screening_json_instruction",
-        )
         with st.expander("실제 전송되는 user message 전체", expanded=False):
             st.text_area(
                 "input screening complete user message preview",

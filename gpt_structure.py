@@ -9,16 +9,14 @@ MODEL = "gpt-5"
 def build_filter_user_content(letter, knowledge):
     """입력 필터의 user role content를 구성한다.
 
-    사용자 knowledge와 사용자 편지를 명시적인 섹션으로 분리하고, JSON mode가
-    안정적으로 동작하도록 JSON 객체 반환 지시를 마지막에 포함한다.
+    사용자 knowledge와 사용자 편지를 명시적인 섹션으로 분리한다. 출력 형식은
+    input filter system prompt의 JSON schema 지시를 따른다.
     """
     return f"""[사용자 Knowledge]
 {knowledge}
 
 [사용자가 작성한 편지]
-{letter}
-
-응답은 반드시 JSON 객체로 반환해주세요."""
+{letter}"""
 
 
 def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt):
