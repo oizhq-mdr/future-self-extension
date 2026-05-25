@@ -137,17 +137,34 @@ def ext_knowledge_generate(row, bfi_system_prompt=None, pvq_system_prompt=None):
 
 
 def ext_knowledge_parts_generate(row, bfi_system_prompt=None, pvq_system_prompt=None):
-    """현재 자아와 3년 후 미래 자아 정보를 분리해 생성한다."""
+    """답장 생성에 필요한 knowledge를 입력 변수 단위로 분리해 생성한다."""
     demo = ext_demo_generate(row)
     love_hate = ext_love_hate_generate(row)
     bfi = ext_bfi_generate(row, system_prompt=bfi_system_prompt)
     pvq = ext_pvq_generate(row, system_prompt=pvq_system_prompt)
     future_profile = ext_future_profile_generate(row)
+    love_hate_parts = split_love_hate_parts(love_hate)
 
     return {
-        "present_self": "\n\n".join([demo, love_hate, bfi, pvq]),
+        "present_self": demo,
+        "love": love_hate_parts["love"],
+        "hate": love_hate_parts["hate"],
+        "bfi": bfi,
+        "pvq": pvq,
         "future_self": future_profile,
     }
+
+
+def combine_love_hate_parts(parts):
+    """분리된 LOVE/HATE 섹션을 기존 love_hate 문자열로 합친다."""
+    return "\n\n".join(
+        part
+        for part in [
+            parts.get("love", ""),
+            parts.get("hate", ""),
+        ]
+        if part
+    )
 
 
 def combine_knowledge_parts(parts):
@@ -156,25 +173,83 @@ def combine_knowledge_parts(parts):
         part
         for part in [
             parts.get("present_self", ""),
+            combine_love_hate_parts(parts),
+            parts.get("bfi", ""),
+            parts.get("pvq", ""),
             parts.get("future_self", ""),
         ]
         if part
     )
 
 
-def split_knowledge_parts(knowledge):
-    """통합 knowledge 문자열에서 present/future self 섹션을 분리한다."""
-    marker = "[Profile in Three Years]"
-    marker_index = knowledge.find(marker)
+def split_love_hate_parts(love_hate):
+    """통합 선호/비선호 문자열에서 LOVE/HATE 섹션을 분리한다."""
+    hate_marker = "**[Top 3 Things this person hates]**"
+    marker_index = love_hate.find(hate_marker)
     if marker_index == -1:
         return {
-            "present_self": knowledge,
+            "love": love_hate.strip(),
+            "hate": "",
+        }
+
+    line_start = love_hate.rfind("\n", 0, marker_index)
+    split_index = line_start + 1 if line_start != -1 else marker_index
+    return {
+        "love": love_hate[:split_index].strip(),
+        "hate": love_hate[split_index:].strip(),
+    }
+
+
+def split_knowledge_parts(knowledge):
+    """통합 knowledge 문자열에서 LLM 입력 변수 섹션을 분리한다."""
+    markers = {
+        "love": "**[Top 3 Things this person loves]**",
+        "bfi": "**[Big 5 Personality Traits in 2026]**",
+        "pvq": "**[Life-guiding Principles in 2026]**",
+        "future_self": "[Profile in Three Years]",
+    }
+    marker_positions = {
+        key: knowledge.find(marker)
+        for key, marker in markers.items()
+        if knowledge.find(marker) != -1
+    }
+    if not marker_positions:
+        return {
+            "present_self": knowledge.strip(),
+            "love": "",
+            "hate": "",
+            "bfi": "",
+            "pvq": "",
             "future_self": "",
         }
 
-    line_start = knowledge.rfind("\n", 0, marker_index)
-    split_index = line_start + 1 if line_start != -1 else marker_index
+    section_starts = {}
+    for key, marker_index in marker_positions.items():
+        line_start = knowledge.rfind("\n", 0, marker_index)
+        section_starts[key] = line_start + 1 if line_start != -1 else marker_index
+
+    ordered_sections = sorted(section_starts.items(), key=lambda item: item[1])
+    result = {
+        "present_self": knowledge[: ordered_sections[0][1]].strip(),
+        "love": "",
+        "hate": "",
+        "bfi": "",
+        "pvq": "",
+        "future_self": "",
+    }
+
+    for index, (key, start) in enumerate(ordered_sections):
+        end = ordered_sections[index + 1][1] if index + 1 < len(ordered_sections) else len(knowledge)
+        section = knowledge[start:end].strip()
+        if key == "love":
+            result.update(split_love_hate_parts(section))
+        else:
+            result[key] = section
     return {
-        "present_self": knowledge[:split_index].strip(),
-        "future_self": knowledge[split_index:].strip(),
+        "present_self": result["present_self"],
+        "love": result["love"],
+        "hate": result["hate"],
+        "bfi": result["bfi"],
+        "pvq": result["pvq"],
+        "future_self": result["future_self"],
     }

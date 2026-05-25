@@ -44,13 +44,24 @@ def build_filter_user_content(letter, knowledge):
 {letter}"""
 
 
-def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt, participant_name=None, future_self=None):
+def dd_generate_gpt4_basic(
+    system_prompt,
+    knowledge,
+    user_prompt,
+    participant_name=None,
+    future_self=None,
+    love="",
+    hate="",
+    bfi="",
+    pvq="",
+):
     """미래 자아 답장 본문을 생성한다.
 
     `system_prompt`는 선택된 답장 생성 프롬프트이다. `participant_name`,
-    `knowledge`, `future_self`, `user_prompt`를 각각 명시적인 입력 섹션으로
-    구성해 `MODEL`에 요청하고, 생성된 답장 문자열만 반환한다. `future_self`
-    가 없으면 이전 호환을 위해 `knowledge`를 통합 knowledge로 전달한다.
+    `knowledge`, `love`, `hate`, `bfi`, `pvq`, `future_self`, `user_prompt`를
+    각각 명시적인 입력 섹션으로 구성해 `MODEL`에 요청하고, 생성된 답장
+    문자열만 반환한다. `future_self`가 없으면 이전 호환을 위해 `knowledge`를
+    통합 knowledge로 전달한다.
     """
     if future_self is None:
         user_content = f"""[PRESENT_SELF_AND_FUTURE_SELF]
@@ -64,6 +75,18 @@ def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt, participant_na
 
 [PRESENT_SELF]
 {knowledge}
+
+[LOVE]
+{love}
+
+[HATE]
+{hate}
+
+[BFI]
+{bfi}
+
+[PVQ]
+{pvq}
 
 [FUTURE_SELF]
 {future_self}
@@ -261,6 +284,10 @@ def dd_generate_improvement_prompt_gpt4(
     improvement_prompt,
     participant_name,
     present_self,
+    love,
+    hate,
+    bfi,
+    pvq,
     future_self,
     original_letter,
     previous_reply,
@@ -277,6 +304,18 @@ def dd_generate_improvement_prompt_gpt4(
 
 [PRESENT_SELF]
 {present_self}
+
+[LOVE]
+{love}
+
+[HATE]
+{hate}
+
+[BFI]
+{bfi}
+
+[PVQ]
+{pvq}
 
 [FUTURE_SELF]
 {future_self}
