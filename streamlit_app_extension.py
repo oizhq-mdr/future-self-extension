@@ -737,7 +737,11 @@ def selected_filter_letter(user_letter):
     """
     if st.session_state.filter_input_source in {"고위험 편지 데모", "극단 편지 데모"}:
         return DEMO_HIGH_RISK_LETTER
-    return user_letter
+    return first_nonempty_text(
+        user_letter,
+        st.session_state.get("original_user_letter"),
+        DEMO_USER_LETTER if st.session_state.get("user_name") == DEMO_PARTICIPANT_NAME else "",
+    )
 
 
 def sync_filter_letter_editor(user_letter):
