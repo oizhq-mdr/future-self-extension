@@ -109,7 +109,7 @@ DEMO_USER_LETTER = """**[User Letter]**
 DEMO_PRESENT_SELF = """
 **[Demographics]** Demographics describe who this person is.
 
-Name: 데모 사용자
+Name: 손흥민
 Age: 28
 Sex: 남자
 Disability Status: 장애나 건강상의 어려움이 없음
