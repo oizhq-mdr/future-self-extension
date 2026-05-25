@@ -401,14 +401,13 @@ def render_global_variable_panel(user_letter_to_agent):
         ("SCREENING_FEEDBACK", screening_feedback_text),
     ]
 
-    with st.expander("Global Variables", expanded=False):
+    with st.sidebar.expander("Global Variables", expanded=False):
         for variable_name, variable_value in variables:
             st.text_area(
                 variable_name,
                 value=variable_value,
                 height=80 if variable_name == "PARTICIPANT_NAME" else 220,
                 disabled=True,
-                key=f"global_variable_{variable_name.lower()}",
             )
 
 
@@ -1497,7 +1496,6 @@ user_letter_to_agent = get_user_letter(user_row)
 
 st.title("[FutureSelf Extension] QA")
 render_node_nav(extension_df)
-render_global_variable_panel(user_letter_to_agent)
 st.markdown("---")
 
 if st.session_state.node == "select_user":
@@ -1648,3 +1646,5 @@ elif st.session_state.node == "improve_prompt":
             st.session_state.output_filter_state = None
             st.session_state.node = "screen_reply"
             st.rerun()
+
+render_global_variable_panel(user_letter_to_agent)
