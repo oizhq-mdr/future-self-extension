@@ -290,6 +290,7 @@ def init_state():
         "output_filter_state": None,
         "improvement_prompt": "",
         "improved_reply": "",
+        "_improvement_running": False,
         "last_llm_io": [],
         "default_notice": "",
         "_synced_query_node": None,
@@ -853,6 +854,7 @@ def reset_user_outputs():
     st.session_state.output_filter_state = None
     st.session_state.improvement_prompt = ""
     st.session_state.improved_reply = ""
+    st.session_state["_improvement_running"] = False
     st.session_state.last_llm_io = []
 
 
@@ -1370,9 +1372,13 @@ def run_screening(reply, original_letter=""):
 
 def run_improvement_prompt():
     """스크리닝 피드백을 바탕으로 현재 시스템 답장의 개선본을 생성한다."""
+    if st.session_state.get("_improvement_running"):
+        st.stop()
+    st.session_state["_improvement_running"] = True
     improvement_system_prompt = read_prompt(st.session_state.selected_improvement_prompt_path)
     system_reply = st.session_state.screened_reply or st.session_state.generated_reply
     if not system_reply or not st.session_state.screening_result:
+        st.session_state["_improvement_running"] = False
         st.warning("개선 답장을 만들기 전에 먼저 답장 스크리닝을 실행하세요.")
         st.stop()
     knowledge_parts = current_knowledge_parts()
@@ -1395,8 +1401,10 @@ def run_improvement_prompt():
             st.session_state.generated_reply = st.session_state.improved_reply
             st.session_state.screened_reply = st.session_state.improved_reply
             st.session_state.screening_reply_editor = st.session_state.improved_reply
+            st.session_state["_improvement_running"] = False
             set_last_llm_io_or_stop(["개선 답장 생성"])
         except openai.AuthenticationError:
+            st.session_state["_improvement_running"] = False
             show_openai_auth_error()
 
 
@@ -1872,7 +1880,6 @@ elif st.session_state.node == "improve_prompt":
             st.write(system_reply)
     if st.button("개선 답장 생성", type="primary"):
         run_improvement_prompt()
-        st.rerun()
     if st.session_state.improved_reply:
         render_last_llm_io()
         edited_improved_reply = st.text_area(
