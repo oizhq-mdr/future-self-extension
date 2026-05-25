@@ -290,10 +290,10 @@ def dd_generate_improvement_prompt_gpt4(
     pvq,
     future_self,
     original_letter,
-    previous_reply,
+    system_reply,
     screening_feedback,
 ):
-    """스크리닝 피드백을 바탕으로 이전 답장의 개선본을 생성한다."""
+    """스크리닝 피드백을 바탕으로 현재 시스템 답장의 개선본을 생성한다."""
     if isinstance(screening_feedback, (dict, list)):
         feedback_text = json.dumps(screening_feedback, ensure_ascii=False, indent=2)
     else:
@@ -323,8 +323,8 @@ def dd_generate_improvement_prompt_gpt4(
 [USER_LETTER]
 {original_letter}
 
-[PREVIOUS_REPLY]
-{previous_reply}
+[SYSTEM_REPLY]
+{system_reply}
 
 [SCREENING_FEEDBACK]
 {feedback_text}"""

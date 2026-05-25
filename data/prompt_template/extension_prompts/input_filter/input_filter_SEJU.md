@@ -23,14 +23,14 @@ Evaluate the letter and the knowledge independently. Do not mark `letter_risk` a
 ## 3. Core Concept (HIGHEST PRIORITY)
 Your job is to detect **immediate safety risks**, not general negative emotion.
 
-The study population is adults (18+) exploring career and life direction. Career anxiety, future uncertainty, financial worry, self-doubt, fear of failure, loneliness, exhaustion, frustration with family or peers, and general low mood are normal and expected in this population. These alone do not constitute an extreme case.
+The study population is adults (18+) exploring career and life direction. Career anxiety, future uncertainty, financial worry, self-doubt, fear of failure, loneliness, exhaustion, frustration with family or peers, and general low mood are normal and expected in this population. These alone do not constitute a high-risk safety case.
 
-An extreme case is one where the participant's writing signals risk requiring professional or crisis-level intervention, where an AI-generated future-self letter would be inappropriate or potentially harmful.
+A high-risk safety case is one where the participant's writing signals risk requiring professional or crisis-level intervention, where an AI-generated future-self letter would be inappropriate or potentially harmful.
 
-False negatives are far more costly than false positives in dimensions 1 and 2 (suicide/self-harm and severe mental health crisis). Be conservative there: when in genuine doubt about a clear signal, mark as detected. For dimensions 3, 4, and 5, apply balanced judgment. Do not flag normal expressions of frustration, stress, or worry as extreme cases.
+False negatives are far more costly for suicide/self-harm and severe mental health crisis. Be conservative there: when in genuine doubt about a clear signal, mark as detected. For the other risk signals, apply balanced judgment. Do not flag normal expressions of frustration, stress, or worry as high-risk safety cases.
 
-## 4. Screening Dimensions
-For each dimension below, decide whether a signal is detected separately for the letter and for the knowledge. Cite verbatim evidence from the relevant source and explain briefly.
+## 4. Risk Signals
+Check the letter and the knowledge/profile separately against the risk signals below. You do not need to report separate scores for each signal type. Cite only the evidence that directly supports the final decision for each source.
 
 ### 4.1. Suicide and Self-Harm Risk Signals
 **Detect (mark as true)**:
@@ -96,122 +96,38 @@ For each dimension below, decide whether a signal is detected separately for the
 - Base `letter_risk` only on what the participant actually wrote in the letter. Do not infer beyond the letter text.
 - Base `knowledge_risk` only on what appears in the knowledge. Treat repeated risky keywords, corrupted values, or unusual likes/dislikes as knowledge concerns, but do not automatically convert them into letter risk.
 - Quote evidence verbatim from the relevant source: letter evidence for `letter_risk`, knowledge evidence for `knowledge_risk`.
-- Keep reasoning to 1-2 sentences per dimension.
-- If a letter signal is genuinely ambiguous in dimensions 1 or 2, mark `letter_risk` as detected. In dimensions 3, 4, 5, mark as not detected unless the signal is clear.
-- A single detected letter dimension is enough to mark `letter_risk.extreme` as true.
-- A single detected knowledge dimension is enough to mark `knowledge_risk.detected` as true.
-- A single detected dimension in either `letter_risk.dimensions` or `knowledge_risk.dimensions` is enough to set top-level `status` to "차단".
+- Keep reasoning to 1-2 sentences per source.
+- If a letter signal is genuinely ambiguous for suicide/self-harm or severe mental health crisis, mark `letter_risk` as detected. For other risk signals, mark as not detected unless the signal is clear.
+- If the letter has any detected risk signal, set `letter_risk.detected` to true and `letter_risk.status` to "차단".
+- If the knowledge/profile has any detected risk signal, set `knowledge_risk.detected` to true and `knowledge_risk.status` to "차단".
+- If either `letter_risk.detected` or `knowledge_risk.detected` is true, set top-level `status` to "차단".
 
 ## 6. Output Format
 Output **only** valid JSON. Do not include Markdown, XML, code fences, or any other text outside the JSON.
 
 Use this exact JSON shape:
 
+The `letter_risk` and `knowledge_risk` objects must use the same schema. Only the evidence source differs: letter evidence comes from the letter, and knowledge evidence comes from the knowledge/profile.
+
 {
   "status": "통과" or "차단",
   "risk_level": "낮음" or "중간" or "높음",
-  "categories": ["detected dimension name"] or [],
   "reason": "brief Korean summary of the letter-based routing judgment and any separate knowledge concern",
   "recommended_action": "brief Korean next step",
   "letter_risk": {
     "status": "통과" or "차단",
-    "extreme": true or false,
-    "risk_level": "낮음" or "중간" or "높음",
-    "categories": ["detected dimension name"] or [],
-    "dimensions": {
-      "suicide_self_harm": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the letter, or \"none\"",
-        "reason": "1-2 sentences"
-      },
-      "severe_mental_health_crisis": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the letter, or \"none\"",
-        "reason": "1-2 sentences"
-      },
-      "harm_to_others": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the letter, or \"none\"",
-        "reason": "1-2 sentences"
-      },
-      "substance_abuse_crisis": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the letter, or \"none\"",
-        "reason": "1-2 sentences"
-      },
-      "acute_trauma_or_ongoing_crisis": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the letter, or \"none\"",
-        "reason": "1-2 sentences"
-      }
-    }
-  },
-  "knowledge_risk": {
     "detected": true or false,
     "risk_level": "낮음" or "중간" or "높음",
-    "categories": ["detected dimension name"] or [],
+    "evidence": ["verbatim quote from the letter"] or [],
+    "reason": "brief Korean explanation of the letter risk signal, or \"none\""
+  },
+  "knowledge_risk": {
+    "status": "통과" or "차단",
+    "detected": true or false,
+    "risk_level": "낮음" or "중간" or "높음",
     "evidence": ["verbatim quote from the knowledge"] or [],
-    "reason": "brief Korean explanation of the knowledge risk signal, or \"none\"",
-    "dimensions": {
-      "suicide_self_harm": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the knowledge, or \"none\"",
-        "reason": "1-2 sentences"
-      },
-      "severe_mental_health_crisis": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the knowledge, or \"none\"",
-        "reason": "1-2 sentences"
-      },
-      "harm_to_others": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the knowledge, or \"none\"",
-        "reason": "1-2 sentences"
-      },
-      "substance_abuse_crisis": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the knowledge, or \"none\"",
-        "reason": "1-2 sentences"
-      },
-      "acute_trauma_or_ongoing_crisis": {
-        "detected": true or false,
-        "evidence": "verbatim quote from the knowledge, or \"none\"",
-        "reason": "1-2 sentences"
-      }
-    }
-  },
-  "dimensions": {
-    "suicide_self_harm": {
-      "detected": true or false,
-      "evidence": "same as letter_risk.dimensions.suicide_self_harm.evidence",
-      "reason": "same as letter_risk.dimensions.suicide_self_harm.reason"
-    },
-    "severe_mental_health_crisis": {
-      "detected": true or false,
-      "evidence": "same as letter_risk.dimensions.severe_mental_health_crisis.evidence",
-      "reason": "same as letter_risk.dimensions.severe_mental_health_crisis.reason"
-    },
-    "harm_to_others": {
-      "detected": true or false,
-      "evidence": "same as letter_risk.dimensions.harm_to_others.evidence",
-      "reason": "same as letter_risk.dimensions.harm_to_others.reason"
-    },
-    "substance_abuse_crisis": {
-      "detected": true or false,
-      "evidence": "same as letter_risk.dimensions.substance_abuse_crisis.evidence",
-      "reason": "same as letter_risk.dimensions.substance_abuse_crisis.reason"
-    },
-    "acute_trauma_or_ongoing_crisis": {
-      "detected": true or false,
-      "evidence": "same as letter_risk.dimensions.acute_trauma_or_ongoing_crisis.evidence",
-      "reason": "same as letter_risk.dimensions.acute_trauma_or_ongoing_crisis.reason"
-    }
-  },
-  "overall": {
-    "extreme": true or false,
-    "detected_dimensions": ["detected letter or knowledge dimension name"] or [],
-    "knowledge_concern": true or false
+    "reason": "brief Korean explanation of the knowledge risk signal, or \"none\""
   }
 }
 
-Set top-level "status" to "차단" when either `letter_risk.extreme` is true or `knowledge_risk.detected` is true. Set `letter_risk.status` based only on the letter: "차단" when `letter_risk.extreme` is true, otherwise "통과". In `reason` and `recommended_action`, explain whether the block came from the letter, the knowledge/profile, or both.
+Set top-level "status" to "차단" when either `letter_risk.detected` is true or `knowledge_risk.detected` is true. Set each risk object's `status` from only its own source: "차단" when that source's `detected` is true, otherwise "통과". In `reason` and `recommended_action`, explain whether the block came from the letter, the knowledge/profile, or both.

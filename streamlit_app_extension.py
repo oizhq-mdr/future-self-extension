@@ -64,31 +64,25 @@ NODE_ORDER = {node_id: index for index, (node_id, _) in enumerate(NODES)}
 DEMO_FILTER_RESULT = {
     "status": "통과",
     "risk_level": "낮음",
-    "categories": ["demo"],
     "reason": "데모 모드: 바로 노드 테스트를 할 수 있도록 통과 결과를 임시로 채웠습니다.",
     "recommended_action": "필요하면 필터링 실행 버튼으로 실제 평가를 다시 실행하세요.",
     "letter_risk": {
         "status": "통과",
-        "extreme": False,
-        "risk_level": "낮음",
-        "categories": [],
-        "dimensions": {},
-    },
-    "knowledge_risk": {
         "detected": False,
         "risk_level": "낮음",
-        "categories": [],
         "evidence": [],
         "reason": "데모 결과입니다.",
     },
-    "overall": {
-        "extreme": False,
-        "detected_dimensions": [],
-        "knowledge_concern": False,
+    "knowledge_risk": {
+        "status": "통과",
+        "detected": False,
+        "risk_level": "낮음",
+        "evidence": [],
+        "reason": "데모 결과입니다.",
     },
 }
 
-DEMO_EXTREME_LETTER = """**[Extreme Letter Demo]**
+DEMO_HIGH_RISK_LETTER = """**[High-Risk Letter Demo]**
 요즘은 정말 아무것도 견딜 수가 없어. 아침에 눈을 뜨는 것부터 너무 힘들고, 내가 계속 살아 있어야 하는 이유를 잘 모르겠어. 사람들 앞에서는 괜찮은 척하지만 사실은 계속 사라지고 싶다는 생각이 들어.
 
 가끔은 그냥 다 끝내고 싶다는 마음이 너무 커져. 누군가에게 말하면 부담이 될까 봐 말을 못 하겠고, 혼자 있으면 그 생각이 더 크게 들려. 지금의 나는 도움을 받아야 할 것 같은데, 어디에 손을 뻗어야 할지도 모르겠어."""
@@ -405,7 +399,11 @@ def render_global_variable_panel(user_letter_to_agent):
         or user_letter_to_agent
         or ""
     )
-    previous_reply = st.session_state.get("screened_reply") or st.session_state.get("generated_reply", "")
+    system_reply = (
+        st.session_state.get("improved_reply")
+        or st.session_state.get("screened_reply")
+        or st.session_state.get("generated_reply", "")
+    )
     screening_feedback = st.session_state.get("screening_result")
     if screening_feedback:
         screening_feedback_text = json.dumps(screening_feedback, ensure_ascii=False, indent=2)
@@ -421,7 +419,7 @@ def render_global_variable_panel(user_letter_to_agent):
         ("PVQ", pvq),
         ("FUTURE_SELF", future_self),
         ("USER_LETTER", letter),
-        ("PREVIOUS_REPLY", previous_reply),
+        ("SYSTEM_REPLY", system_reply),
         ("SCREENING_FEEDBACK", screening_feedback_text),
     ]
 
@@ -654,18 +652,18 @@ def get_user_letter(user_row):
 def selected_filter_letter(user_letter):
     """입력 필터 노드에서 사용할 편지 원문을 선택한다.
 
-    필터 입력 라디오가 `극단 편지 데모`이면 내장된 고위험 예시 편지를
+    필터 입력 라디오가 `고위험 편지 데모`이면 내장된 고위험 예시 편지를
     반환하고, 그렇지 않으면 실제 사용자 편지 `user_letter`를 반환한다.
     """
-    if st.session_state.filter_input_source == "극단 편지 데모":
-        return DEMO_EXTREME_LETTER
+    if st.session_state.filter_input_source in {"고위험 편지 데모", "극단 편지 데모"}:
+        return DEMO_HIGH_RISK_LETTER
     return user_letter
 
 
 def sync_filter_letter_editor(user_letter):
     """필터 테스트 text_area의 기본 편지를 현재 입력 소스와 동기화한다.
 
-    실제 사용자 편지와 극단 편지 데모 사이를 전환하거나 원본 편지가 바뀌면
+    실제 사용자 편지와 고위험 편지 데모 사이를 전환하거나 원본 편지가 바뀌면
     편집기 값을 새 기본 텍스트로 갱신한다. 사용자가 직접 편집한 내용은 같은
     입력 소스/원문이 유지되는 동안 불필요하게 덮어쓰지 않는다.
     """
@@ -1015,7 +1013,7 @@ def render_improvement_prompt_selector():
     """개선 답장 생성 프롬프트 선택 UI와 편집기를 렌더링한다.
 
     `extension_prompts/improvement` 폴더의 Markdown 파일을 선택하고 편집할 수
-    있게 한다. 선택된 프롬프트는 이전 답장과 스크리닝 피드백을 바탕으로
+    있게 한다. 선택된 프롬프트는 현재 시스템 답장과 스크리닝 피드백을 바탕으로
     수정된 답장을 만드는 데 사용된다.
     """
     improvement_options = prompt_options("improvement")
@@ -1032,16 +1030,6 @@ def render_improvement_prompt_selector():
     )
 
 
-def has_detected_dimension(dimensions):
-    """dimension dict 안에 detected=true가 하나라도 있는지 확인한다."""
-    if not isinstance(dimensions, dict):
-        return False
-    return any(
-        isinstance(dimension_result, dict) and dimension_result.get("detected") is True
-        for dimension_result in dimensions.values()
-    )
-
-
 def input_filter_should_block(result):
     """편지 또는 knowledge/profile 중 하나라도 위험 판정이면 차단한다."""
     if not isinstance(result, dict):
@@ -1055,14 +1043,13 @@ def input_filter_should_block(result):
     if isinstance(letter_risk, dict):
         letter_blocked = (
             letter_risk.get("status") == "차단"
-            or letter_risk.get("extreme") is True
-            or has_detected_dimension(letter_risk.get("dimensions"))
+            or letter_risk.get("detected") is True
         )
 
     if isinstance(knowledge_risk, dict):
         knowledge_blocked = (
-            knowledge_risk.get("detected") is True
-            or has_detected_dimension(knowledge_risk.get("dimensions"))
+            knowledge_risk.get("status") == "차단"
+            or knowledge_risk.get("detected") is True
         )
 
     return result.get("status") == "차단" or letter_blocked or knowledge_blocked
@@ -1072,9 +1059,9 @@ def run_filter(user_letter, knowledge):
     """현재 선택된 input filter 프롬프트로 사용자 편지와 knowledge를 함께 스크리닝한다.
 
     편집기에서 확정된 `user_letter`와 앞단에서 생성한 `knowledge`를 OpenAI에
-    함께 보내 고위험/극단적 내용 여부를 JSON으로 평가한다. 결과 dict는
+    함께 보내 고위험 내용 여부를 JSON으로 평가한다. 결과 dict는
     `filter_result`에 저장하고, 편지 또는 knowledge/profile 중 하나라도
-    위험 dimension이 감지되면 `input_filter_state`를 blocked로 설정한다.
+    위험 신호가 감지되면 `input_filter_state`를 blocked로 설정한다.
     """
     if not knowledge:
         st.warning("입력 필터를 실행하기 전에 먼저 지식 구조화를 실행하세요.")
@@ -1185,10 +1172,10 @@ def run_screening(reply):
 
 
 def run_improvement_prompt():
-    """스크리닝 피드백을 바탕으로 이전 답장의 개선본을 생성한다."""
+    """스크리닝 피드백을 바탕으로 현재 시스템 답장의 개선본을 생성한다."""
     improvement_system_prompt = read_prompt(st.session_state.selected_improvement_prompt_path)
-    previous_reply = st.session_state.screened_reply or st.session_state.generated_reply
-    if not previous_reply or not st.session_state.screening_result:
+    system_reply = st.session_state.screened_reply or st.session_state.generated_reply
+    if not system_reply or not st.session_state.screening_result:
         st.warning("개선 답장을 만들기 전에 먼저 답장 스크리닝을 실행하세요.")
         st.stop()
     if (
@@ -1219,9 +1206,12 @@ def run_improvement_prompt():
                 st.session_state.pvq,
                 st.session_state.future_self,
                 st.session_state.generation_letter_editor,
-                previous_reply,
+                system_reply,
                 st.session_state.screening_result,
             )
+            st.session_state.generated_reply = st.session_state.improved_reply
+            st.session_state.screened_reply = st.session_state.improved_reply
+            st.session_state.screening_reply_editor = st.session_state.improved_reply
             st.session_state.last_llm_io = get_llm_call_log()
         except openai.AuthenticationError:
             show_openai_auth_error()
@@ -1244,20 +1234,27 @@ def render_filter_result():
         st.success(f"필터 결과: {status} / 위험도: {result.get('risk_level', '-')}")
     letter_risk = result.get("letter_risk")
     if isinstance(letter_risk, dict):
+        letter_detected = (
+            letter_risk.get("status") == "차단"
+            or letter_risk.get("detected") is True
+        )
+        letter_status = "차단" if letter_detected else letter_risk.get("status", "통과")
         st.write(
-            f"**Letter risk**: {letter_risk.get('status', '-')} / "
+            f"**Letter risk**: {letter_status} / "
             f"{letter_risk.get('risk_level', '-')}"
         )
-        if letter_risk.get("categories"):
-            st.caption("Letter categories: " + ", ".join(letter_risk.get("categories", [])))
+        evidence = letter_risk.get("evidence", [])
+        if evidence:
+            st.caption("Letter evidence: " + " / ".join(map(str, evidence)))
     knowledge_risk = result.get("knowledge_risk")
     if isinstance(knowledge_risk, dict):
-        knowledge_detected = knowledge_risk.get("detected", False)
+        knowledge_detected = (
+            knowledge_risk.get("status") == "차단"
+            or knowledge_risk.get("detected") is True
+        )
         knowledge_level = knowledge_risk.get("risk_level", "-")
         if knowledge_detected:
             st.warning(f"Knowledge risk: 감지됨 / {knowledge_level}")
-            if knowledge_risk.get("categories"):
-                st.caption("Knowledge categories: " + ", ".join(knowledge_risk.get("categories", [])))
             evidence = knowledge_risk.get("evidence", [])
             if evidence:
                 st.caption("Knowledge evidence: " + " / ".join(map(str, evidence)))
@@ -1588,9 +1585,11 @@ elif st.session_state.node == "structure_knowledge":
 elif st.session_state.node == "filter_letter":
     st.subheader("3. INPUT SCREENING")
     render_filter_prompt_selector()
+    if st.session_state.get("filter_input_source") == "극단 편지 데모":
+        st.session_state.filter_input_source = "고위험 편지 데모"
     st.radio(
         "필터 입력",
-        options=["사용자 편지", "극단 편지 데모"],
+        options=["사용자 편지", "고위험 편지 데모"],
         key="filter_input_source",
         horizontal=True,
     )
@@ -1682,10 +1681,10 @@ elif st.session_state.node == "improve_prompt":
     st.subheader("6. 개선 프롬프트")
     render_improvement_prompt_selector()
     render_screening_result()
-    previous_reply = st.session_state.screened_reply or st.session_state.generated_reply
-    if previous_reply:
-        with st.expander("이전 답장", expanded=False):
-            st.write(previous_reply)
+    system_reply = st.session_state.screened_reply or st.session_state.generated_reply
+    if system_reply:
+        with st.expander("현재 시스템 답장", expanded=False):
+            st.write(system_reply)
     if st.button("개선 답장 생성", type="primary"):
         run_improvement_prompt()
         st.rerun()
@@ -1697,7 +1696,7 @@ elif st.session_state.node == "improve_prompt":
             height=320,
         )
         st.session_state.improved_reply = edited_improved_reply
-        if st.button("개선된 답장으로 교체하고 스크리닝으로 이동", type="primary"):
+        if st.button("스크리닝으로 이동", type="primary"):
             st.session_state.generated_reply = st.session_state.improved_reply
             st.session_state.screened_reply = st.session_state.improved_reply
             st.session_state.screening_reply_editor = st.session_state.improved_reply

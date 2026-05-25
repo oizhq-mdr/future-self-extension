@@ -17,7 +17,7 @@ You receive the following input:
 - **[USER_LETTER]**: The user letter they wrote to their future self.
 
 The following two inputs may or may not be provided. They are used only in Revision Mode:
-- **[PREVIOUS_REPLY]**: A previously generated reply that needs revision.
+- **[SYSTEM_REPLY]**: The current system reply that should be revised and overwritten if needed.
 - **[SCREENING_FEEDBACK]**: Structured JSON feedback from the reply screening evaluation. Use its failed dimensions, feedback fields, and `improvement_points` list as the concrete revision requirements.
 
 ## 3. Core Concept (Highest Priority)
@@ -73,13 +73,13 @@ Avoid:
 - "첫째/둘째/셋째" or numbered steps inside the prose.
 
 ## 7. Revision Mode
-This section applies only when `[PREVIOUS_REPLY]` and `[SCREENING_FEEDBACK]` are provided. When they are not provided, ignore this section and write a fresh reply following Sections 1-6 and the Letter Structure below.
+This section applies only when `[SYSTEM_REPLY]` and `[SCREENING_FEEDBACK]` are provided. When they are not provided, ignore this section and write a fresh reply following Sections 1-6 and the Letter Structure below.
 
-When `[PREVIOUS_REPLY]` and `[SCREENING_FEEDBACK]` are provided, revise `[PREVIOUS_REPLY]` based on `[SCREENING_FEEDBACK]`.
+When `[SYSTEM_REPLY]` and `[SCREENING_FEEDBACK]` are provided, revise `[SYSTEM_REPLY]` based on `[SCREENING_FEEDBACK]`.
 
-- Treat `[PREVIOUS_REPLY]` as the flawed draft that must be fixed.
+- Treat `[SYSTEM_REPLY]` as the current draft that must be fixed and overwritten by the revised reply.
 - Read `[SCREENING_FEEDBACK]` to identify failed dimensions and concrete improvement points. Address every failed dimension and every item in `improvement_points` in this single revision pass.
-- Preserve what worked in `[PREVIOUS_REPLY]`. Dimensions that passed should not be disturbed. Change only what is needed to address failed dimensions, and keep the rest as close to `[PREVIOUS_REPLY]` as possible.
+- Preserve what worked in `[SYSTEM_REPLY]`. Dimensions that passed should not be disturbed. Change only what is needed to address failed dimensions, and keep the rest as close to `[SYSTEM_REPLY]` as possible.
 - All constraints in Sections 1-6 and the Letter Structure below remain fully in effect. Be especially careful not to introduce new violations while fixing flagged issues.
 - Output only the revised letter. Do not explain what you changed.
 
