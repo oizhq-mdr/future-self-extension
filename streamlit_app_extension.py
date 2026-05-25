@@ -61,6 +61,7 @@ NODES = [
 ]
 NODE_ORDER = {node_id: index for index, (node_id, _) in enumerate(NODES)}
 CONTEXT_SCHEMA_VERSION = "previous_system_reply_v1"
+DEMO_PARTICIPANT_NAME = "손흥민"
 
 DEMO_FILTER_RESULT = {
     "status": "통과",
@@ -558,38 +559,12 @@ def get_user_row(extension_df):
     return matches.iloc[0]
 
 
-def default_user_name(extension_df):
-    """데이터셋에서 첫 번째 유효 사용자 이름을 기본 사용자로 반환한다.
-
-    사용자 선택 없이 후속 노드에 직접 접근했을 때 앱이 자동으로 사용할
-    fallback 사용자 이름을 결정한다. 사용 가능한 이름이 없으면 `None`을
-    반환한다.
-    """
-    names = extension_df.iloc[:, 0].dropna().unique()
-    if len(names) == 0:
-        return None
-    return names[0]
-
-
-def ensure_default_user(extension_df):
-    """현재 선택 사용자가 없거나 유효하지 않으면 기본 사용자로 교체한다.
-
-    URL로 중간 노드에 직접 들어온 경우에도 QA가 진행되도록 첫 번째
-    사용자 이름을 session_state에 채운다. 사용자가 바뀌면 이전 산출물이
-    섞이지 않도록 관련 결과 상태를 초기화한다.
-    """
-    fallback_user = default_user_name(extension_df)
-    if not fallback_user:
+def has_selected_sheet_user(extension_df):
+    """현재 session_state.user_name이 Google Sheets의 실제 사용자이면 True."""
+    if not st.session_state.get("user_name"):
         return False
-
     valid_users = set(extension_df.iloc[:, 0].dropna().unique())
-    if st.session_state.user_name in valid_users:
-        return False
-
-    st.session_state.user_name = fallback_user
-    st.session_state.user_radio = fallback_user
-    reset_user_outputs()
-    return True
+    return st.session_state.user_name in valid_users
 
 
 def ensure_default_prompts():
@@ -670,6 +645,8 @@ def ensure_demo_outputs_for_node(target_node, allow_demo_outputs=False):
         return notices
 
     if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and not st.session_state.knowledge:
+        if not st.session_state.get("user_name"):
+            st.session_state.user_name = DEMO_PARTICIPANT_NAME
         st.session_state.knowledge = DEMO_KNOWLEDGE
         st.session_state.original_user_letter = DEMO_USER_LETTER
         st.session_state.present_self = DEMO_KNOWLEDGE_PARTS["present_self"]
@@ -709,13 +686,12 @@ def ensure_defaults_for_node(target_node, extension_df):
     """특정 노드 접근 전에 사용자, 프롬프트, 데모 산출물 기본값을 준비한다.
 
     URL query parameter나 그래프 클릭으로 임의 노드에 접근했을 때도 앱이
-    빈 상태로 깨지지 않도록 기본 사용자를 선택하고, 프롬프트 선택값을 보정하며,
-    필요한 경우 데모 산출물을 채운다. 적용된 자동 보정 내용은 안내 문구로
-    session_state에 저장한다.
+    빈 상태로 깨지지 않도록 프롬프트 선택값을 보정한다. 실제 sheet 사용자가
+    선택되지 않은 상태에서는 첫 번째 sheet row가 아니라 사전 정의된 손흥민
+    데모 산출물을 채운다. 적용된 자동 보정 내용은 안내 문구로 session_state에
+    저장한다.
     """
     notices = []
-    if NODE_ORDER[target_node] >= NODE_ORDER["structure_knowledge"] and ensure_default_user(extension_df):
-        notices.append(f"기본 사용자로 '{st.session_state.user_name}'을 선택했습니다.")
 
     before_prompts = {
         "filter": st.session_state.get("selected_filter_prompt_path"),
@@ -733,7 +709,7 @@ def ensure_defaults_for_node(target_node, extension_df):
     if before_prompts != after_prompts:
         notices.append("기본 프롬프트 선택값을 적용했습니다.")
 
-    allow_demo_outputs = get_user_row(extension_df) is None
+    allow_demo_outputs = not has_selected_sheet_user(extension_df)
     notices.extend(ensure_demo_outputs_for_node(target_node, allow_demo_outputs=allow_demo_outputs))
     st.session_state.default_notice = " ".join(notices)
 
