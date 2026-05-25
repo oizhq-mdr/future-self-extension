@@ -7,11 +7,11 @@ def ext_future_profile_generate(row):
     """사용자의 3년 후 미래 프로필 섹션을 생성한다.
 
     Google Sheets에서 읽은 한 사용자 row의 미래 자아 관련 응답
-    `row.iloc[137:146]`을 `profile_at_20.txt` 템플릿에 채워 넣는다.
+    `row.iloc[137:146]`을 `profile_in_three_years.txt` 템플릿에 채워 넣는다.
     결과 문자열은 extension 앱의 knowledge 중 `[Profile in Three Years]`
     계열 정보를 구성하는 데 사용된다.
     """
-    lib_file = 'data/prompt_template/profile_at_20.txt'
+    lib_file = 'data/prompt_template/profile_in_three_years.txt'
     with open(lib_file, "r") as f:
         future_profile_template = f.read()
     

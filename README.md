@@ -30,7 +30,7 @@ FutureSelf Extension은 사용자의 편지와 설문 데이터를 바탕으로 
         ├── PVQ_summary_sys.txt
         ├── demo.txt
         ├── love_hate.txt
-        ├── profile_at_20.txt
+        ├── profile_in_three_years.txt
         └── extension_prompts/
             ├── input_filter/
             ├── output_filter/
@@ -114,7 +114,7 @@ BFI/PVQ 요약과 knowledge 템플릿은 아래 파일을 사용합니다.
 - `data/prompt_template/PVQ_summary_sys.txt`
 - `data/prompt_template/demo.txt`
 - `data/prompt_template/love_hate.txt`
-- `data/prompt_template/profile_at_20.txt`
+- `data/prompt_template/profile_in_three_years.txt`
 
 ## 의존성 메모
 
