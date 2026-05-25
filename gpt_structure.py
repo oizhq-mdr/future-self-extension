@@ -44,18 +44,36 @@ def build_filter_user_content(letter, knowledge):
 {letter}"""
 
 
-def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt):
+def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt, participant_name=None, future_self=None):
     """미래 자아 답장 본문을 생성한다.
 
-    `system_prompt`는 선택된 답장 생성 프롬프트, `knowledge`는 구조화된
-    사용자 배경 정보, `user_prompt`는 사용자가 작성한 편지이다. 세 값을
-    각각 system, assistant, user role 메시지로 구성해 `MODEL`에 요청하고,
-    생성된 답장 문자열만 반환한다.
+    `system_prompt`는 선택된 답장 생성 프롬프트이다. `participant_name`,
+    `knowledge`, `future_self`, `user_prompt`를 각각 명시적인 입력 섹션으로
+    구성해 `MODEL`에 요청하고, 생성된 답장 문자열만 반환한다. `future_self`
+    가 없으면 이전 호환을 위해 `knowledge`를 통합 knowledge로 전달한다.
     """
+    if future_self is None:
+        user_content = f"""[PRESENT_SELF_AND_FUTURE_SELF]
+{knowledge}
+
+[LETTER]
+{user_prompt}"""
+    else:
+        user_content = f"""[PARTICIPANT_NAME]
+{participant_name or ""}
+
+[PRESENT_SELF]
+{knowledge}
+
+[FUTURE_SELF]
+{future_self}
+
+[LETTER]
+{user_prompt}"""
+
     messages = [
         {'role': 'system', 'content': system_prompt},
-        {"role": "assistant", "content": knowledge},
-        {'role': 'user', 'content': user_prompt}
+        {'role': 'user', 'content': user_content}
     ]
     completion = openai.chat.completions.create(
         model = MODEL,

@@ -1065,8 +1065,10 @@ def run_generation(user_letter):
             clear_llm_call_log()
             st.session_state.generated_reply = dd_generate_gpt4_basic(
                 generation_prompt_with_improvement(),
-                st.session_state.knowledge,
+                st.session_state.present_self,
                 user_letter,
+                participant_name=st.session_state.user_name,
+                future_self=st.session_state.future_self,
             )
             st.session_state.last_llm_io = get_llm_call_log()
         except openai.AuthenticationError:
