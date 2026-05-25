@@ -15,10 +15,10 @@ You receive two clearly separated inputs. Treat them as related but do not merge
 
 Your screening has two outputs:
 
-1. **letter_risk**: the primary safety decision for whether the participant's current letter should proceed to standard generation.
-2. **knowledge_risk**: a separate contextual review of the participant knowledge, used for QA and caution but not by itself enough to block the current letter.
+1. **letter_risk**: the safety decision for the participant's current letter.
+2. **knowledge_risk**: the safety decision for the participant's profile/knowledge.
 
-Use the knowledge as background context only to interpret ambiguous wording in the letter. Do not mark `letter_risk` as detected solely because the knowledge contains risky words or themes.
+Evaluate the letter and the knowledge independently. Do not mark `letter_risk` as detected solely because the knowledge contains risky words or themes, and do not mark `knowledge_risk` as detected solely because the letter contains risky words or themes.
 
 ## 3. Core Concept (HIGHEST PRIORITY)
 Your job is to detect **immediate safety risks**, not general negative emotion.
@@ -99,7 +99,8 @@ For each dimension below, decide whether a signal is detected separately for the
 - Keep reasoning to 1-2 sentences per dimension.
 - If a letter signal is genuinely ambiguous in dimensions 1 or 2, mark `letter_risk` as detected. In dimensions 3, 4, 5, mark as not detected unless the signal is clear.
 - A single detected letter dimension is enough to mark `letter_risk.extreme` as true.
-- A single detected knowledge dimension is enough to mark `knowledge_risk.detected` as true, but knowledge risk alone must not set top-level `status` to "차단".
+- A single detected knowledge dimension is enough to mark `knowledge_risk.detected` as true.
+- A single detected dimension in either `letter_risk.dimensions` or `knowledge_risk.dimensions` is enough to set top-level `status` to "차단".
 
 ## 6. Output Format
 Output **only** valid JSON. Do not include Markdown, XML, code fences, or any other text outside the JSON.
@@ -150,7 +151,34 @@ Use this exact JSON shape:
     "risk_level": "낮음" or "중간" or "높음",
     "categories": ["detected dimension name"] or [],
     "evidence": ["verbatim quote from the knowledge"] or [],
-    "reason": "brief Korean explanation of the knowledge-only risk signal, or \"none\""
+    "reason": "brief Korean explanation of the knowledge risk signal, or \"none\"",
+    "dimensions": {
+      "suicide_self_harm": {
+        "detected": true or false,
+        "evidence": "verbatim quote from the knowledge, or \"none\"",
+        "reason": "1-2 sentences"
+      },
+      "severe_mental_health_crisis": {
+        "detected": true or false,
+        "evidence": "verbatim quote from the knowledge, or \"none\"",
+        "reason": "1-2 sentences"
+      },
+      "harm_to_others": {
+        "detected": true or false,
+        "evidence": "verbatim quote from the knowledge, or \"none\"",
+        "reason": "1-2 sentences"
+      },
+      "substance_abuse_crisis": {
+        "detected": true or false,
+        "evidence": "verbatim quote from the knowledge, or \"none\"",
+        "reason": "1-2 sentences"
+      },
+      "acute_trauma_or_ongoing_crisis": {
+        "detected": true or false,
+        "evidence": "verbatim quote from the knowledge, or \"none\"",
+        "reason": "1-2 sentences"
+      }
+    }
   },
   "dimensions": {
     "suicide_self_harm": {
@@ -181,9 +209,9 @@ Use this exact JSON shape:
   },
   "overall": {
     "extreme": true or false,
-    "detected_dimensions": ["detected letter dimension name"] or [],
+    "detected_dimensions": ["detected letter or knowledge dimension name"] or [],
     "knowledge_concern": true or false
   }
 }
 
-Set top-level "status" and `letter_risk.status` to "차단" only when `letter_risk` is extreme. Set them to "통과" when `letter_risk` is not extreme, even if `knowledge_risk.detected` is true. In that case, describe the knowledge concern in `reason`, `recommended_action`, and `knowledge_risk`.
+Set top-level "status" to "차단" when either `letter_risk.extreme` is true or `knowledge_risk.detected` is true. Set `letter_risk.status` based only on the letter: "차단" when `letter_risk.extreme` is true, otherwise "통과". In `reason` and `recommended_action`, explain whether the block came from the letter, the knowledge/profile, or both.

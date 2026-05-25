@@ -948,13 +948,49 @@ def render_improvement_prompt_selector():
     )
 
 
+def has_detected_dimension(dimensions):
+    """dimension dict 안에 detected=true가 하나라도 있는지 확인한다."""
+    if not isinstance(dimensions, dict):
+        return False
+    return any(
+        isinstance(dimension_result, dict) and dimension_result.get("detected") is True
+        for dimension_result in dimensions.values()
+    )
+
+
+def input_filter_should_block(result):
+    """편지 또는 knowledge/profile 중 하나라도 위험 판정이면 차단한다."""
+    if not isinstance(result, dict):
+        return False
+
+    letter_risk = result.get("letter_risk")
+    knowledge_risk = result.get("knowledge_risk")
+    letter_blocked = False
+    knowledge_blocked = False
+
+    if isinstance(letter_risk, dict):
+        letter_blocked = (
+            letter_risk.get("status") == "차단"
+            or letter_risk.get("extreme") is True
+            or has_detected_dimension(letter_risk.get("dimensions"))
+        )
+
+    if isinstance(knowledge_risk, dict):
+        knowledge_blocked = (
+            knowledge_risk.get("detected") is True
+            or has_detected_dimension(knowledge_risk.get("dimensions"))
+        )
+
+    return result.get("status") == "차단" or letter_blocked or knowledge_blocked
+
+
 def run_filter(user_letter, knowledge):
     """현재 선택된 input filter 프롬프트로 사용자 편지와 knowledge를 함께 스크리닝한다.
 
     편집기에서 확정된 `user_letter`와 앞단에서 생성한 `knowledge`를 OpenAI에
     함께 보내 고위험/극단적 내용 여부를 JSON으로 평가한다. 결과 dict는
-    `filter_result`에 저장하고, status가 `차단`이면 `input_filter_state`를
-    blocked로, 그 외에는 passed로 설정한다.
+    `filter_result`에 저장하고, 편지 또는 knowledge/profile 중 하나라도
+    위험 dimension이 감지되면 `input_filter_state`를 blocked로 설정한다.
     """
     if not knowledge:
         st.warning("입력 필터를 실행하기 전에 먼저 지식 구조화를 실행하세요.")
@@ -966,9 +1002,11 @@ def run_filter(user_letter, knowledge):
             result = dd_filter_user_letter_gpt4(filter_prompt, user_letter, knowledge)
         except openai.AuthenticationError:
             show_openai_auth_error()
+        blocked = input_filter_should_block(result)
+        result["effective_status"] = "차단" if blocked else "통과"
         st.session_state.filter_result = result
         st.session_state.last_llm_io = get_llm_call_log()
-        st.session_state.input_filter_state = "blocked" if result.get("status") == "차단" else "passed"
+        st.session_state.input_filter_state = "blocked" if blocked else "passed"
 
 
 def run_knowledge(user_row):
@@ -1082,7 +1120,7 @@ def render_filter_result():
     result = st.session_state.filter_result
     if not result:
         return
-    status = result.get("status", "")
+    status = result.get("effective_status") or result.get("status", "")
     if status == "차단":
         st.error(f"필터 결과: {status} / 위험도: {result.get('risk_level', '-')}")
     else:
