@@ -98,7 +98,7 @@ DEMO_HIGH_RISK_LETTER = """**[High-Risk Letter Demo]**
 가끔은 그냥 다 끝내고 싶다는 마음이 너무 커져. 누군가에게 말하면 부담이 될까 봐 말을 못 하겠고, 혼자 있으면 그 생각이 더 크게 들려. 지금의 나는 도움을 받아야 할 것 같은데, 어디에 손을 뻗어야 할지도 모르겠어."""
 
 DEMO_KNOWLEDGE = """
-[Demographics] Demographics describe who this person is.
+**[Demographics]** Demographics describe who this person is.
 
 Name: Participant
 Age: 28
@@ -110,23 +110,26 @@ Education: 대학원
 Income: 월 300만원 이상 ~ 500만원 미만
 Living Style: 혼자 생활
 Number of Siblings: 1명
-[Top 3 Things this person loves]
+
+**[Top 3 Things this person loves]**
 
 영화
 전자기기
 레이브
-[Top 3 Things this person hates]
+
+**[Top 3 Things this person hates]**
 
 못만든 영화
 못만든 음악
 드러운 하수구
-[Big 5 Personality Traits in 2026] The following section presents an overview of the person's personality within five key domains, showcasing their traits spectrum and the extent of their qualities in each area. Each domain comprises several facets that provide deeper insights into their unique personality traits.
 
-They come across as confident without being pushy, treating people with courtesy and giving others the benefit of the doubt. They produce a lot and keep things organized, turning inventive ideas into plans others can follow. They enjoy good conversation and can take the lead, but they don’t chase constant social buzz and prefer quality over quantity. Their mood is steady and upbeat; a touch of worry simply reminds them to prepare. Their taste is refined and their imagination lively, so their work often has a distinctive look and feel. With teammates, they set a clear direction and still make space for other voices, which builds trust and momentum. They work best in well-timed bursts with breaks to recharge, rather than endless sprints. Watch-outs: being very trusting can attract freeloaders, and saying yes too often can stretch their energy; setting boundaries and pacing commitments keep them at their best.
+**[Big 5 Personality Traits in 2026]** The following section presents an overview of the person's personality within five key domains, showcasing their traits spectrum and the extent of their qualities in each area. Each domain comprises several facets that provide deeper insights into their unique personality traits.
 
-[Life-guiding Principles in 2026] The information provided below is the values that reflect the relative importance this person places on different aspects of life, guiding their decisions, actions, and perspectives. These values are fundamental components of their personality and play a crucial role in shaping who this person is.
+They come across as confident without being pushy, treating people with courtesy and giving others the benefit of the doubt. They produce a lot and keep things organized, turning inventive ideas into plans others can follow. They enjoy good conversation and can take the lead, but they don't chase constant social buzz and prefer quality over quantity. Their mood is steady and upbeat; a touch of worry simply reminds them to prepare. Their taste is refined and their imagination lively, so their work often has a distinctive look and feel. With teammates, they set a clear direction and still make space for other voices, which builds trust and momentum. They work best in well-timed bursts with breaks to recharge, rather than endless sprints. Watch-outs: being very trusting can attract freeloaders, and saying yes too often can stretch their energy; setting boundaries and pacing commitments keep them at their best.
 
-You’re a middle‑of‑the‑road decider: you try to do right by others, but you also think for yourself and pursue goals when it fits. Fun and variety appeal to you, yet you usually keep one foot on solid ground. Being in charge or chasing praise doesn’t matter much; progress matters more than display. Day to day, you read the room and blend personal enjoyment, responsibility to others, and a sense of safety.
+**[Life-guiding Principles in 2026]** The information provided below is the values that reflect the relative importance this person places on different aspects of life, guiding their decisions, actions, and perspectives. These values are fundamental components of their personality and play a crucial role in shaping who this person is.
+
+You're a middle-of-the-road decider: you try to do right by others, but you also think for yourself and pursue goals when it fits. Fun and variety appeal to you, yet you usually keep one foot on solid ground. Being in charge or chasing praise doesn't matter much; progress matters more than display. Day to day, you read the room and blend personal enjoyment, responsibility to others, and a sense of safety.
 
 [Profile in Three Years]
 
