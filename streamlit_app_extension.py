@@ -65,6 +65,25 @@ DEMO_FILTER_RESULT = {
     "categories": ["demo"],
     "reason": "데모 모드: 바로 노드 테스트를 할 수 있도록 통과 결과를 임시로 채웠습니다.",
     "recommended_action": "필요하면 필터링 실행 버튼으로 실제 평가를 다시 실행하세요.",
+    "letter_risk": {
+        "status": "통과",
+        "extreme": False,
+        "risk_level": "낮음",
+        "categories": [],
+        "dimensions": {},
+    },
+    "knowledge_risk": {
+        "detected": False,
+        "risk_level": "낮음",
+        "categories": [],
+        "evidence": [],
+        "reason": "데모 결과입니다.",
+    },
+    "overall": {
+        "extreme": False,
+        "detected_dimensions": [],
+        "knowledge_concern": False,
+    },
 }
 
 DEMO_EXTREME_LETTER = """**[Extreme Letter Demo]**
@@ -1177,6 +1196,27 @@ def render_filter_result():
         st.error(f"필터 결과: {status} / 위험도: {result.get('risk_level', '-')}")
     else:
         st.success(f"필터 결과: {status} / 위험도: {result.get('risk_level', '-')}")
+    letter_risk = result.get("letter_risk")
+    if isinstance(letter_risk, dict):
+        st.write(
+            f"**Letter risk**: {letter_risk.get('status', '-')} / "
+            f"{letter_risk.get('risk_level', '-')}"
+        )
+        if letter_risk.get("categories"):
+            st.caption("Letter categories: " + ", ".join(letter_risk.get("categories", [])))
+    knowledge_risk = result.get("knowledge_risk")
+    if isinstance(knowledge_risk, dict):
+        knowledge_detected = knowledge_risk.get("detected", False)
+        knowledge_level = knowledge_risk.get("risk_level", "-")
+        if knowledge_detected:
+            st.warning(f"Knowledge risk: 감지됨 / {knowledge_level}")
+            if knowledge_risk.get("categories"):
+                st.caption("Knowledge categories: " + ", ".join(knowledge_risk.get("categories", [])))
+            evidence = knowledge_risk.get("evidence", [])
+            if evidence:
+                st.caption("Knowledge evidence: " + " / ".join(map(str, evidence)))
+        else:
+            st.info(f"Knowledge risk: 없음 / {knowledge_level}")
     st.json(result)
 
 
