@@ -1184,7 +1184,19 @@ def run_knowledge(user_row):
     with st.spinner("지식을 구조화하는 중..."):
         try:
             clear_llm_call_log()
-            knowledge_parts = ext_knowledge_parts_generate(user_row)
+            demo = ext_demo_generate(user_row)
+            love_hate_parts = split_love_hate_parts(ext_love_hate_generate(user_row))
+            future_profile = ext_future_profile_generate(user_row)
+            bfi = ext_bfi_generate(user_row)
+            pvq = ext_pvq_generate(user_row)
+            knowledge_parts = {
+                "present_self": demo,
+                "love": love_hate_parts["love"],
+                "hate": love_hate_parts["hate"],
+                "bfi": bfi,
+                "pvq": pvq,
+                "future_self": future_profile,
+            }
             st.session_state.present_self = knowledge_parts["present_self"]
             st.session_state.love = knowledge_parts["love"]
             st.session_state.hate = knowledge_parts["hate"]
@@ -1194,7 +1206,17 @@ def run_knowledge(user_row):
             st.session_state.knowledge = combine_knowledge_parts(knowledge_parts)
             st.session_state.filter_knowledge_editor = st.session_state.knowledge
             st.session_state["_loaded_filter_knowledge_base_text"] = st.session_state.knowledge
-            st.session_state.last_llm_io = get_llm_call_log()
+            llm_logs = get_llm_call_log()
+            expected_stages = ["BFI 요약", "PVQ 요약"]
+            actual_stages = [log.get("stage") for log in llm_logs]
+            if actual_stages != expected_stages:
+                st.error(
+                    "지식 구조화 LLM 호출 수가 예상과 다릅니다. "
+                    f"예상: {', '.join(expected_stages)} / 실제: {', '.join(actual_stages)}"
+                )
+                st.session_state.last_llm_io = llm_logs
+                st.stop()
+            st.session_state.last_llm_io = llm_logs
         except openai.AuthenticationError:
             show_openai_auth_error()
 
