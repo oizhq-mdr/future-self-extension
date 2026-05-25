@@ -294,10 +294,7 @@ def dd_generate_improvement_prompt_gpt4(
     screening_feedback,
 ):
     """스크리닝 피드백을 바탕으로 현재 시스템 답장의 개선본을 생성한다."""
-    if isinstance(screening_feedback, (dict, list)):
-        feedback_text = json.dumps(screening_feedback, ensure_ascii=False, indent=2)
-    else:
-        feedback_text = str(screening_feedback)
+    feedback_text = summarize_screening_feedback(screening_feedback)
 
     user_content = f"""[PARTICIPANT_NAME]
 {participant_name}
@@ -340,3 +337,36 @@ def dd_generate_improvement_prompt_gpt4(
     output = completion.choices[0].message.content
     record_llm_call("개선 답장 생성", messages, output)
     return output
+
+
+def summarize_screening_feedback(screening_feedback):
+    """output screening JSON에서 개선에 필요한 항목만 간결한 텍스트로 뽑는다."""
+    if not isinstance(screening_feedback, dict):
+        return str(screening_feedback or "")
+
+    lines = []
+    improvement_points = screening_feedback.get("improvement_points")
+    if isinstance(improvement_points, list):
+        for point in improvement_points:
+            if point and str(point).lower() != "none":
+                lines.append(f"- {point}")
+
+    dimensions = screening_feedback.get("dimensions")
+    if isinstance(dimensions, dict):
+        for dimension_name, dimension_result in dimensions.items():
+            if not isinstance(dimension_result, dict):
+                continue
+            if dimension_result.get("passed") is not False:
+                continue
+            feedback = dimension_result.get("feedback")
+            evidence = dimension_result.get("evidence")
+            if feedback and str(feedback).lower() != "none":
+                lines.append(f"- {dimension_name}: {feedback}")
+            elif evidence and str(evidence).lower() != "none":
+                lines.append(f"- {dimension_name}: {evidence}")
+
+    if lines:
+        return "\n".join(dict.fromkeys(lines))
+
+    summary = screening_feedback.get("summary")
+    return str(summary or "none")

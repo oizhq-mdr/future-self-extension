@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from gpt_structure import (
     dd_generate_gpt4_basic,
     dd_generate_improvement_prompt_gpt4,
     get_llm_call_log,
+    summarize_screening_feedback,
 )
 
 
@@ -417,7 +417,7 @@ def render_global_variable_panel(user_letter_to_agent):
     )
     screening_feedback = st.session_state.get("screening_result")
     if screening_feedback:
-        screening_feedback_text = json.dumps(screening_feedback, ensure_ascii=False, indent=2)
+        screening_feedback_text = summarize_screening_feedback(screening_feedback)
     else:
         screening_feedback_text = ""
 
