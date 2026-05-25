@@ -887,7 +887,7 @@ def graph_node_state(node_id):
     return "empty"
 
 
-def graph_node(node_id, title, subtitle, x, y, state, width=160):
+def graph_node(node_id, title, subtitle, x, y, state, width=160, clickable=True):
     """QA Graph에서 클릭 가능한 주요 노드 HTML 조각을 생성한다.
 
     노드 ID, 제목, 부제, 좌표, 상태 CSS 클래스, 너비를 받아 absolute
@@ -895,13 +895,15 @@ def graph_node(node_id, title, subtitle, x, y, state, width=160):
     parameter로 이동해 해당 노드를 열도록 구성한다.
     """
     href = f"?node={node_id}"
+    tag = "a" if clickable else "div"
+    href_attr = f' href="{href}" target="_self"' if clickable else ""
     return f"""
-<a class="resolve-node {state}" href="{href}" target="_self" style="left:{x}px; top:{y}px; width:{width}px;">
+<{tag} class="resolve-node {state}"{href_attr} style="left:{x}px; top:{y}px; width:{width}px;">
   <span class="node-port in"></span>
   <span class="node-port out"></span>
   <span class="node-title">{title}</span>
   <span class="node-subtitle">{subtitle}</span>
-</a>
+</{tag}>
 """
 
 
@@ -970,7 +972,7 @@ def render_node_nav(extension_df):
     <div class="canvas-label" style="left:1290px; top:26px;">QA</div>
     <div class="canvas-label" style="left:1540px; top:26px;">OUTCOME</div>
     {graph_node("select_user", "User", "사용자 선택", 20, 72, state("select_user"))}
-    {graph_node("structure_knowledge", "Knowledge", "BFI/PVQ 포함", 270, 72, state("structure_knowledge"))}
+    {graph_node("structure_knowledge", "Knowledge", "사용자 선택 후 실행", 270, 72, state("structure_knowledge"), clickable=False)}
     {graph_node("filter_letter", "Input Filter", "편지+knowledge", 540, 72, state("filter_letter"))}
     {graph_note("filter_letter", "Blocked", "차단 결과 표시", 780, 24, block_state, clickable=False)}
     {graph_note("edit_prompt", "Passed", "통과 결과 표시", 780, 132, pass_state, clickable=False)}
@@ -1011,6 +1013,11 @@ def sync_node_from_query_params(extension_df):
     if isinstance(node_from_url, list):
         node_from_url = node_from_url[0] if node_from_url else None
     if node_from_url in NODE_ORDER and node_from_url != st.session_state.get("_synced_query_node"):
+        if node_from_url == "structure_knowledge":
+            st.session_state.default_notice = "지식 구조화는 사용자 선택 화면에서 선택 후 이동하세요."
+            st.session_state.node = "select_user"
+            st.session_state["_synced_query_node"] = node_from_url
+            return
         if (
             NODE_ORDER[node_from_url] >= NODE_ORDER["edit_prompt"]
             and st.session_state.filter_result
