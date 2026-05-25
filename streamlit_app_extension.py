@@ -95,11 +95,11 @@ Number of Siblings: 1명
 못만든 영화
 못만든 음악
 드러운 하수구
-[Big 5 Personality Traits in 2025] The following section presents an overview of the person's personality within five key domains, showcasing their traits spectrum and the extent of their qualities in each area. Each domain comprises several facets that provide deeper insights into their unique personality traits.
+[Big 5 Personality Traits in 2026] The following section presents an overview of the person's personality within five key domains, showcasing their traits spectrum and the extent of their qualities in each area. Each domain comprises several facets that provide deeper insights into their unique personality traits.
 
 They come across as confident without being pushy, treating people with courtesy and giving others the benefit of the doubt. They produce a lot and keep things organized, turning inventive ideas into plans others can follow. They enjoy good conversation and can take the lead, but they don’t chase constant social buzz and prefer quality over quantity. Their mood is steady and upbeat; a touch of worry simply reminds them to prepare. Their taste is refined and their imagination lively, so their work often has a distinctive look and feel. With teammates, they set a clear direction and still make space for other voices, which builds trust and momentum. They work best in well-timed bursts with breaks to recharge, rather than endless sprints. Watch-outs: being very trusting can attract freeloaders, and saying yes too often can stretch their energy; setting boundaries and pacing commitments keep them at their best.
 
-[Life-guiding Principles in 2025] The information provided below is the values that reflect the relative importance this person places on different aspects of life, guiding their decisions, actions, and perspectives. These values are fundamental components of their personality and play a crucial role in shaping who this person is.
+[Life-guiding Principles in 2026] The information provided below is the values that reflect the relative importance this person places on different aspects of life, guiding their decisions, actions, and perspectives. These values are fundamental components of their personality and play a crucial role in shaping who this person is.
 
 You’re a middle‑of‑the‑road decider: you try to do right by others, but you also think for yourself and pursue goals when it fits. Fun and variety appeal to you, yet you usually keep one foot on solid ground. Being in charge or chasing praise doesn’t matter much; progress matters more than display. Day to day, you read the room and blend personal enjoyment, responsibility to others, and a sense of safety.
 

@@ -72,7 +72,7 @@ def ext_bfi_generate(row, system_prompt=None):
     """
     bfi_intro = '''
 
-**[Big 5 Personality Traits in 2025]**
+**[Big 5 Personality Traits in 2026]**
 The following section presents an overview of the person's personality within five key domains, showcasing their traits spectrum and the extent of their qualities in each area. Each domain comprises several facets that provide deeper insights into their unique personality traits.
 
 '''
@@ -93,7 +93,7 @@ def ext_pvq_generate(row, system_prompt=None):
     """
     pvq_intro = '''
 
-**[Life-guiding Principles in 2025]**
+**[Life-guiding Principles in 2026]**
 The information provided below is the values that reflect the relative importance this person places on different aspects of life, guiding their decisions, actions, and perspectives. These values are fundamental components of their personality and play a crucial role in shaping who this person is.
 
 '''
