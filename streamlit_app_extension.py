@@ -209,8 +209,10 @@ def init_state():
         "selected_improvement_prompt_path": str(EXT_PROMPT_ROOT / "improvement" / "default.md"),
         "filter_input_source": "사용자 편지",
         "filter_letter_editor": "",
+        "filter_knowledge_editor": "",
         "_loaded_filter_input_source": None,
         "_loaded_filter_base_text": "",
+        "_loaded_filter_knowledge_base_text": "",
         "filter_result": None,
         "input_filter_state": None,
         "generation_letter_editor": "",
@@ -700,6 +702,20 @@ def sync_filter_letter_editor(user_letter):
         st.session_state["_loaded_filter_base_text"] = base_text
 
 
+def sync_filter_knowledge_editor():
+    """입력 필터용 knowledge 편집기를 현재 구조화 knowledge와 동기화한다.
+
+    지식 구조화가 새로 실행되거나 사용자가 바뀌어 knowledge가 달라지면
+    편집기 기본값을 갱신한다. 같은 knowledge 기준에서는 사용자가 직접
+    수정한 내용을 rerun 중에도 유지한다.
+    """
+    base_text = st.session_state.knowledge
+    base_changed = st.session_state.get("_loaded_filter_knowledge_base_text") != base_text
+    if base_changed or not st.session_state.filter_knowledge_editor:
+        st.session_state.filter_knowledge_editor = base_text
+        st.session_state["_loaded_filter_knowledge_base_text"] = base_text
+
+
 def sync_generation_letter_editor(user_letter):
     """답장 생성 text_area의 기본 편지를 선택 사용자 편지와 동기화한다.
 
@@ -751,8 +767,10 @@ def reset_user_outputs():
     st.session_state.filter_result = None
     st.session_state.input_filter_state = None
     st.session_state.filter_letter_editor = ""
+    st.session_state.filter_knowledge_editor = ""
     st.session_state["_loaded_filter_input_source"] = None
     st.session_state["_loaded_filter_base_text"] = ""
+    st.session_state["_loaded_filter_knowledge_base_text"] = ""
     st.session_state.generation_letter_editor = ""
     st.session_state["_loaded_generation_letter_base_text"] = ""
     st.session_state.generated_reply = ""
@@ -1061,6 +1079,8 @@ def run_knowledge(user_row):
     with st.spinner("지식을 구조화하는 중..."):
         try:
             st.session_state.knowledge = ext_knowledge_generate(user_row)
+            st.session_state.filter_knowledge_editor = st.session_state.knowledge
+            st.session_state["_loaded_filter_knowledge_base_text"] = st.session_state.knowledge
         except openai.AuthenticationError:
             show_openai_auth_error()
 
@@ -1514,19 +1534,31 @@ elif st.session_state.node == "filter_letter":
         horizontal=True,
     )
     sync_filter_letter_editor(user_letter_to_agent)
+    sync_filter_knowledge_editor()
     filter_letter = st.text_area(
         "필터 테스트 편지",
         value=st.session_state.filter_letter_editor,
         height=260,
     )
     st.session_state.filter_letter_editor = filter_letter
+    filter_knowledge = st.text_area(
+        "필터 테스트 knowledge",
+        value=st.session_state.filter_knowledge_editor,
+        height=360,
+    )
+    if filter_knowledge != st.session_state.knowledge:
+        st.session_state.knowledge = filter_knowledge
+        st.session_state.filter_result = None
+        st.session_state.input_filter_state = None
+    st.session_state.filter_knowledge_editor = filter_knowledge
+    st.session_state["_loaded_filter_knowledge_base_text"] = filter_knowledge
     render_input_screening_preview(
         read_prompt(st.session_state.selected_filter_prompt_path),
         filter_letter,
-        st.session_state.knowledge,
+        filter_knowledge,
     )
     if st.button("필터링 실행", type="primary"):
-        run_filter(filter_letter, st.session_state.knowledge)
+        run_filter(filter_letter, filter_knowledge)
         st.rerun()
     render_filter_result()
     if st.session_state.filter_result and st.button("시스템 프롬프트로 이동", type="primary"):
