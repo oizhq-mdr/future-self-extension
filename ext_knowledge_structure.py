@@ -1,7 +1,15 @@
 import pandas as pd
+from pathlib import Path
 from pvq_scoring import *
 from bfi_scoring import *
 from gpt_structure import pvq_summary_gpt4, bfi_summary_gpt4
+
+PROMPT_ROOT = Path(__file__).resolve().parent / "data" / "prompt_template"
+
+
+def read_template(filename):
+    return (PROMPT_ROOT / filename).read_text(encoding="utf-8")
+
 
 def ext_future_profile_generate(row):
     """사용자의 3년 후 미래 프로필 섹션을 생성한다.
@@ -11,9 +19,7 @@ def ext_future_profile_generate(row):
     결과 문자열은 extension 앱의 knowledge 중 `[Profile in Three Years]`
     계열 정보를 구성하는 데 사용된다.
     """
-    lib_file = 'data/prompt_template/profile_in_three_years.txt'
-    with open(lib_file, "r") as f:
-        future_profile_template = f.read()
+    future_profile_template = read_template("profile_in_three_years.txt")
     
     future_profile = future_profile_template.format(
         AGE = row.iloc[137],
@@ -36,9 +42,7 @@ def ext_demo_generate(row):
     개인정보 노출을 피하기 위해 Participant로 고정하며, 건강상 어려움이
     있는 경우 영향 설명을 추가한다.
     """
-    lib_file = 'data/prompt_template/demo.txt'
-    with open(lib_file, "r") as f:
-        demo_template = f.read()
+    demo_template = read_template("demo.txt")
         
     hea_dis_val = str(row.iloc[80])
     has_disability = '있' in hea_dis_val
@@ -105,9 +109,7 @@ def ext_love_hate_generate(row):
     row의 선호 항목 3개와 비선호 항목 3개(`row.iloc[131:137]`)를
     `love_hate.txt` 템플릿에 넣어 knowledge에 포함할 문자열을 만든다.
     """
-    lib_file = 'data/prompt_template/love_hate.txt'
-    with open(lib_file, "r") as f:
-        love_hate_template = f.read()
+    love_hate_template = read_template("love_hate.txt")
         
     love_hate = love_hate_template.format(
         LOVE1 = row.iloc[131],

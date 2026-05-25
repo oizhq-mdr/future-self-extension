@@ -2,8 +2,10 @@ import openai
 from openai import OpenAI
 from pydantic import BaseModel
 import json
+from pathlib import Path
 
 MODEL = "gpt-5"
+PROMPT_ROOT = Path(__file__).resolve().parent / "data" / "prompt_template"
 
 
 def build_filter_user_content(letter, knowledge):
@@ -68,10 +70,7 @@ def pvq_summary_gpt4(summary, system_prompt=None):
     스키마로 구조화 응답을 받아 마지막 단계 요약만 반환한다.
     """
     if system_prompt is None:
-        system_lib_file = 'data/prompt_template/PVQ_summary_sys.txt'
-        f = open(system_lib_file, "r")
-        sys_prompt = f.read()
-        f.close()
+        sys_prompt = (PROMPT_ROOT / "PVQ_summary_sys.txt").read_text(encoding="utf-8")
     else:
         sys_prompt = system_prompt
 
@@ -101,10 +100,7 @@ def bfi_summary_gpt4(summary, system_prompt=None):
     마지막 reasoning step을 사용자 지식에 들어갈 요약으로 반환한다.
     """
     if system_prompt is None:
-        system_lib_file = 'data/prompt_template/BFI_summary_sys.txt'
-        f = open(system_lib_file, "r")
-        sys_prompt = f.read()
-        f.close()
+        sys_prompt = (PROMPT_ROOT / "BFI_summary_sys.txt").read_text(encoding="utf-8")
     else:
         sys_prompt = system_prompt
 

@@ -46,7 +46,8 @@ def show_openai_auth_error():
     )
     st.stop()
 
-PROMPT_ROOT = Path("data/prompt_template")
+APP_ROOT = Path(__file__).resolve().parent
+PROMPT_ROOT = APP_ROOT / "data" / "prompt_template"
 EXT_PROMPT_ROOT = PROMPT_ROOT / "extension_prompts"
 NODES = [
     ("select_user", "1. 사용자 선택"),
@@ -238,6 +239,8 @@ def read_prompt(path):
     준비되지 않은 상태에서도 앱 UI가 깨지지 않도록 한다.
     """
     prompt_path = Path(path)
+    if not prompt_path.is_absolute():
+        prompt_path = APP_ROOT / prompt_path
     if not prompt_path.exists():
         return ""
     return prompt_path.read_text(encoding="utf-8")
