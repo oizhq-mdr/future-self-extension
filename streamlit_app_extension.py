@@ -1,3 +1,4 @@
+import hashlib
 import os
 from pathlib import Path
 
@@ -345,6 +346,15 @@ def render_last_llm_io(title="실제 LLM I/O"):
         return
     with st.expander(title, expanded=False):
         for call_index, call in enumerate(logs, start=1):
+            call_key = hashlib.sha1(
+                "|".join(
+                    [
+                        str(call.get("stage", "")),
+                        str(call.get("timestamp", "")),
+                        str(call.get("model", "")),
+                    ]
+                ).encode("utf-8")
+            ).hexdigest()[:10]
             st.markdown(
                 f"**Call {call_index}: {call.get('stage', '-')}**  "
                 f"`{call.get('model', '-')}`  {call.get('timestamp', '')}"
@@ -358,7 +368,7 @@ def render_last_llm_io(title="실제 LLM I/O"):
                     height=220,
                     disabled=True,
                     label_visibility="collapsed",
-                    key=f"llm_io_{call_index}_{message_index}_{role}",
+                    key=f"llm_io_{call_key}_{call_index}_{message_index}_{role}",
                 )
             st.markdown("Output")
             output = call.get("output")
@@ -371,7 +381,7 @@ def render_last_llm_io(title="실제 LLM I/O"):
                     height=220,
                     disabled=True,
                     label_visibility="collapsed",
-                    key=f"llm_io_{call_index}_output",
+                    key=f"llm_io_{call_key}_{call_index}_output",
                 )
             raw_output = call.get("raw_output")
             if raw_output != output:
@@ -385,7 +395,7 @@ def render_last_llm_io(title="실제 LLM I/O"):
                             height=180,
                             disabled=True,
                             label_visibility="collapsed",
-                            key=f"llm_io_{call_index}_raw_output",
+                            key=f"llm_io_{call_key}_{call_index}_raw_output",
                         )
 
 
