@@ -389,7 +389,7 @@ def dd_generate_improvement_prompt_gpt4(
     pvq,
     future_self,
     original_letter,
-    system_reply,
+    previous_system_reply,
     screening_feedback,
 ):
     """스크리닝 피드백을 바탕으로 현재 시스템 답장의 개선본을 생성한다."""
@@ -419,8 +419,8 @@ def dd_generate_improvement_prompt_gpt4(
 [USER_LETTER]
 {original_letter}
 
-[SYSTEM_REPLY]
-{system_reply}
+[PREVIOUS_SYSTEM_REPLY]
+{previous_system_reply}
 
 [SCREENING_FEEDBACK]
 {feedback_text}"""

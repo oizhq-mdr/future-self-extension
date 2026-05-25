@@ -483,7 +483,7 @@ def render_global_variable_panel(user_letter_to_agent):
         future_self = knowledge_parts["future_self"]
 
     letter = current_user_letter_for_context(user_letter_to_agent)
-    system_reply = (
+    previous_system_reply = (
         st.session_state.get("improved_reply")
         or st.session_state.get("screened_reply")
         or st.session_state.get("generated_reply", "")
@@ -503,7 +503,7 @@ def render_global_variable_panel(user_letter_to_agent):
         ("PVQ", pvq),
         ("FUTURE_SELF", future_self),
         ("USER_LETTER", letter),
-        ("SYSTEM_REPLY", system_reply),
+        ("PREVIOUS_SYSTEM_REPLY", previous_system_reply),
         ("SCREENING_FEEDBACK", screening_feedback_text),
     ]
 
@@ -1350,8 +1350,8 @@ def current_user_letter_for_context(default_letter=""):
         else ""
     )
     return first_nonempty_text(
-        st.session_state.get("generation_letter_editor"),
         st.session_state.get("original_user_letter"),
+        st.session_state.get("generation_letter_editor"),
         filter_letter,
         st.session_state.get("current_user_letter_to_agent"),
         default_letter,
@@ -1404,8 +1404,9 @@ def run_improvement_prompt():
         st.stop()
     st.session_state["_improvement_running"] = True
     improvement_system_prompt = read_prompt(st.session_state.selected_improvement_prompt_path)
-    system_reply = st.session_state.screened_reply or st.session_state.generated_reply
-    if not system_reply or not st.session_state.screening_result:
+    previous_system_reply = st.session_state.screened_reply or st.session_state.generated_reply
+    original_user_letter = current_user_letter_for_context()
+    if not previous_system_reply or not st.session_state.screening_result:
         st.session_state["_improvement_running"] = False
         st.warning("개선 답장을 만들기 전에 먼저 답장 스크리닝을 실행하세요.")
         st.stop()
@@ -1422,8 +1423,8 @@ def run_improvement_prompt():
                 knowledge_parts["bfi"],
                 knowledge_parts["pvq"],
                 knowledge_parts["future_self"],
-                current_user_letter_for_context(),
-                system_reply,
+                original_user_letter,
+                previous_system_reply,
                 st.session_state.screening_result,
             )
             st.session_state.generated_reply = st.session_state.improved_reply
