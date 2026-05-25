@@ -105,40 +105,50 @@ DEMO_USER_LETTER = """**[User Letter]**
 
 다만 내가 정말 1인분을 할 수 있을지 걱정된다. 가족은 아직 의심할 것 같고 친구들은 내가 언제까지 학교에 있을지 농담할 것 같다. 그래도 나다운 리듬으로 연구하고 만들면서 버틸 수 있는 사람이 되고 싶다."""
 
-DEMO_KNOWLEDGE = """
+DEMO_PRESENT_SELF = """
 **[Demographics]** Demographics describe who this person is.
 
-Name: 이재우
+Name: 김철수
 Age: 28
 Sex: 남자
 Disability Status: 장애나 건강상의 어려움이 없음
 Nationality: 대한민국
-Residence: 서울시 관악구
-Education: 대학원
-Income: 월 300만원 이상 ~ 500만원 미만
+Residence: 서울시 서대문구
+Education: 대학교
+Income: 월 100만원 이상 ~ 300만원 미만
 Living Style: 혼자 생활
 Number of Siblings: 1명
+"""
 
+DEMO_LOVE = """
 **[Top 3 Things this person loves]**
 
-영화
-전자기기
+영화 만들기
+전자기기 구매
 레이브
+"""
 
+DEMO_HATE = """
 **[Top 3 Things this person hates]**
 
 못만든 영화
 못만든 음악
-드러운 하수구
+해산물
+"""
 
+DEMO_BFI = """
 **[Big 5 Personality Traits in 2026]** The following section presents an overview of the person's personality within five key domains, showcasing their traits spectrum and the extent of their qualities in each area. Each domain comprises several facets that provide deeper insights into their unique personality traits.
 
 They come across as confident without being pushy, treating people with courtesy and giving others the benefit of the doubt. They produce a lot and keep things organized, turning inventive ideas into plans others can follow. They enjoy good conversation and can take the lead, but they don't chase constant social buzz and prefer quality over quantity. Their mood is steady and upbeat; a touch of worry simply reminds them to prepare. Their taste is refined and their imagination lively, so their work often has a distinctive look and feel. With teammates, they set a clear direction and still make space for other voices, which builds trust and momentum. They work best in well-timed bursts with breaks to recharge, rather than endless sprints. Watch-outs: being very trusting can attract freeloaders, and saying yes too often can stretch their energy; setting boundaries and pacing commitments keep them at their best.
+"""
 
+DEMO_PVQ = """
 **[Life-guiding Principles in 2026]** The information provided below is the values that reflect the relative importance this person places on different aspects of life, guiding their decisions, actions, and perspectives. These values are fundamental components of their personality and play a crucial role in shaping who this person is.
 
 You're a middle-of-the-road decider: you try to do right by others, but you also think for yourself and pursue goals when it fits. Fun and variety appeal to you, yet you usually keep one foot on solid ground. Being in charge or chasing praise doesn't matter much; progress matters more than display. Day to day, you read the room and blend personal enjoyment, responsibility to others, and a sense of safety.
+"""
 
+DEMO_FUTURE_SELF = """
 [Profile in Three Years]
 
 3년 후 나의 만 나이: 31
@@ -151,6 +161,16 @@ You're a middle-of-the-road decider: you try to do right by others, but you also
 3년 후 친구들이 인식하는 나의 모습: 쟤는 언제까지 학교에 있지?
 3년 후 업무 환경에서 나의 모습: 1인분을 함
 """
+
+DEMO_KNOWLEDGE_PARTS = {
+    "present_self": DEMO_PRESENT_SELF,
+    "love": DEMO_LOVE,
+    "hate": DEMO_HATE,
+    "bfi": DEMO_BFI,
+    "pvq": DEMO_PVQ,
+    "future_self": DEMO_FUTURE_SELF,
+}
+DEMO_KNOWLEDGE = combine_knowledge_parts(DEMO_KNOWLEDGE_PARTS)
 
 DEMO_REPLY = """
 안녕, 잘 있지? 네가 쓴 HCI와 미디어에 대한 그 집요한 끌림, 태평양 건너 연구실을 향해 몸을 던질 거라는 호언, 그리고 Sony A7M5에 수동 렌즈 마운트해서 이국의 빛을 모을 거라는 상상을 읽으면서, 솔직히 말해 나도 거기까지 왔다. 츄리닝은 여전하고, 예민함도 덜어지진 않았지만(조금 더 노련해졌달까), 버티고 만드는 방식은 더 단단해졌다.
@@ -638,13 +658,12 @@ def ensure_demo_outputs_for_node(target_node):
     if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and not st.session_state.knowledge:
         st.session_state.knowledge = DEMO_KNOWLEDGE
         st.session_state.original_user_letter = DEMO_USER_LETTER
-        knowledge_parts = split_knowledge_parts(DEMO_KNOWLEDGE)
-        st.session_state.present_self = knowledge_parts["present_self"]
-        st.session_state.love = knowledge_parts["love"]
-        st.session_state.hate = knowledge_parts["hate"]
-        st.session_state.bfi = knowledge_parts["bfi"]
-        st.session_state.pvq = knowledge_parts["pvq"]
-        st.session_state.future_self = knowledge_parts["future_self"]
+        st.session_state.present_self = DEMO_KNOWLEDGE_PARTS["present_self"]
+        st.session_state.love = DEMO_KNOWLEDGE_PARTS["love"]
+        st.session_state.hate = DEMO_KNOWLEDGE_PARTS["hate"]
+        st.session_state.bfi = DEMO_KNOWLEDGE_PARTS["bfi"]
+        st.session_state.pvq = DEMO_KNOWLEDGE_PARTS["pvq"]
+        st.session_state.future_self = DEMO_KNOWLEDGE_PARTS["future_self"]
         notices.append("데모 knowledge를 채웠습니다.")
 
     if NODE_ORDER[target_node] >= NODE_ORDER["edit_prompt"] and not st.session_state.filter_result:
