@@ -2,33 +2,42 @@ import openai
 from openai import OpenAI
 from pydantic import BaseModel
 import json
+from contextvars import ContextVar
 from pathlib import Path
 from datetime import datetime
 
 MODEL = "gpt-5"
 PROMPT_ROOT = Path(__file__).resolve().parent / "data" / "prompt_template"
 LLM_CALL_LOGS = []
+LLM_CALL_LOGS_CONTEXT = ContextVar("LLM_CALL_LOGS_CONTEXT", default=None)
 
 
 def clear_llm_call_log():
     LLM_CALL_LOGS.clear()
+    LLM_CALL_LOGS_CONTEXT.set([])
 
 
 def get_llm_call_log():
+    context_logs = LLM_CALL_LOGS_CONTEXT.get()
+    if context_logs is not None:
+        return list(context_logs)
     return list(LLM_CALL_LOGS)
 
 
 def record_llm_call(stage, messages, output, raw_output=None):
-    LLM_CALL_LOGS.append(
-        {
-            "stage": stage,
-            "model": MODEL,
-            "timestamp": datetime.now().isoformat(timespec="seconds"),
-            "messages": messages,
-            "output": output,
-            "raw_output": raw_output if raw_output is not None else output,
-        }
-    )
+    log_entry = {
+        "stage": stage,
+        "model": MODEL,
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "messages": messages,
+        "output": output,
+        "raw_output": raw_output if raw_output is not None else output,
+    }
+    context_logs = LLM_CALL_LOGS_CONTEXT.get()
+    if context_logs is not None:
+        context_logs.append(log_entry)
+    else:
+        LLM_CALL_LOGS.append(log_entry)
 
 
 def build_filter_user_content(

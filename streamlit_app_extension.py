@@ -265,6 +265,10 @@ def init_state():
         "pvq": "",
         "future_self": "",
         "system_prompt": "",
+        "_knowledge_running": False,
+        "_filter_running": False,
+        "_generation_running": False,
+        "_screening_running": False,
         "selected_generation_prompt_path": None,
         "selected_filter_prompt_path": str(EXT_PROMPT_ROOT / "input_filter" / "default.md"),
         "selected_screening_prompt_path": str(EXT_PROMPT_ROOT / "output_filter" / "default.md"),
@@ -834,6 +838,10 @@ def reset_user_outputs():
     st.session_state.bfi = ""
     st.session_state.pvq = ""
     st.session_state.future_self = ""
+    st.session_state["_knowledge_running"] = False
+    st.session_state["_filter_running"] = False
+    st.session_state["_generation_running"] = False
+    st.session_state["_screening_running"] = False
     st.session_state.filter_result = None
     st.session_state.input_filter_state = None
     st.session_state.original_user_letter = ""
@@ -1205,6 +1213,9 @@ def run_filter(user_letter, knowledge):
     if not knowledge:
         st.warning("입력 필터를 실행하기 전에 먼저 지식 구조화를 실행하세요.")
         st.stop()
+    if st.session_state.get("_filter_running"):
+        st.stop()
+    st.session_state["_filter_running"] = True
     filter_prompt = read_prompt(st.session_state.selected_filter_prompt_path)
     with st.spinner("사용자 편지의 고위험 내용을 필터링 중..."):
         try:
@@ -1223,10 +1234,12 @@ def run_filter(user_letter, knowledge):
                 future_self=knowledge_parts["future_self"],
             )
         except openai.AuthenticationError:
+            st.session_state["_filter_running"] = False
             show_openai_auth_error()
         blocked = input_filter_should_block(result)
         result["effective_status"] = "차단" if blocked else "통과"
         st.session_state.filter_result = result
+        st.session_state["_filter_running"] = False
         set_last_llm_io_or_stop(["Input screening"])
         st.session_state.input_filter_state = "blocked" if blocked else "passed"
 
@@ -1238,6 +1251,9 @@ def run_knowledge(user_row):
     위해 통합 knowledge 문자열도 함께 저장한다. OpenAI 인증 오류가 발생하면
     사용자 친화 메시지로 중단한다.
     """
+    if st.session_state.get("_knowledge_running"):
+        st.stop()
+    st.session_state["_knowledge_running"] = True
     with st.spinner("지식을 구조화하는 중..."):
         try:
             clear_llm_call_log()
@@ -1263,8 +1279,10 @@ def run_knowledge(user_row):
             st.session_state.knowledge = combine_knowledge_parts(knowledge_parts)
             st.session_state.filter_knowledge_editor = st.session_state.knowledge
             st.session_state["_loaded_filter_knowledge_base_text"] = st.session_state.knowledge
+            st.session_state["_knowledge_running"] = False
             set_last_llm_io_or_stop(["BFI 요약", "PVQ 요약"])
         except openai.AuthenticationError:
+            st.session_state["_knowledge_running"] = False
             show_openai_auth_error()
 
 
@@ -1290,6 +1308,9 @@ def run_generation(user_letter):
     st.session_state.improvement_prompt = ""
     st.session_state.improved_reply = ""
     st.session_state.original_user_letter = user_letter
+    if st.session_state.get("_generation_running"):
+        st.stop()
+    st.session_state["_generation_running"] = True
     with st.spinner("답장 1개를 생성하는 중..."):
         try:
             clear_llm_call_log()
@@ -1305,8 +1326,10 @@ def run_generation(user_letter):
                 pvq=knowledge_parts["pvq"],
                 future_self=knowledge_parts["future_self"],
             )
+            st.session_state["_generation_running"] = False
             set_last_llm_io_or_stop(["답장 생성"])
         except openai.AuthenticationError:
+            st.session_state["_generation_running"] = False
             show_openai_auth_error()
 
 
@@ -1344,6 +1367,9 @@ def run_screening(reply, original_letter=""):
     """
     screening_prompt = read_prompt(st.session_state.selected_screening_prompt_path)
     st.session_state.original_user_letter = current_user_letter_for_context(original_letter)
+    if st.session_state.get("_screening_running"):
+        st.stop()
+    st.session_state["_screening_running"] = True
     with st.spinner("생성된 답장을 스크리닝 중..."):
         try:
             clear_llm_call_log()
@@ -1362,8 +1388,10 @@ def run_screening(reply, original_letter=""):
                 future_self=knowledge_parts["future_self"],
             )
         except openai.AuthenticationError:
+            st.session_state["_screening_running"] = False
             show_openai_auth_error()
         st.session_state.screened_reply = reply
+        st.session_state["_screening_running"] = False
         set_last_llm_io_or_stop(["답장 스크리닝"])
         result["char_count"] = len(reply)
         st.session_state.screening_result = result
@@ -1764,9 +1792,8 @@ if st.session_state.node == "select_user":
 
 elif st.session_state.node == "structure_knowledge":
     st.subheader("2. 지식 구조화")
-    if st.button("지식 구조화 실행", type="primary"):
+    if st.button("지식 구조화 실행", type="primary", disabled=st.session_state.get("_knowledge_running", False)):
         run_knowledge(user_row)
-        st.rerun()
     if st.session_state.knowledge:
         st.markdown("### 구조화된 지식 설명문")
         st.write(st.session_state.knowledge)
@@ -1812,9 +1839,8 @@ elif st.session_state.node == "filter_letter":
         st.session_state.input_filter_state = None
     st.session_state.filter_knowledge_editor = filter_knowledge
     st.session_state["_loaded_filter_knowledge_base_text"] = filter_knowledge
-    if st.button("필터링 실행", type="primary"):
+    if st.button("필터링 실행", type="primary", disabled=st.session_state.get("_filter_running", False)):
         run_filter(filter_letter, filter_knowledge)
-        st.rerun()
     render_filter_result()
     render_last_llm_io()
     if st.session_state.input_filter_state == "passed" and st.button("시스템 프롬프트로 이동", type="primary"):
@@ -1832,9 +1858,8 @@ elif st.session_state.node == "edit_prompt":
             height=260,
         )
         st.session_state.generation_letter_editor = user_letter
-    if st.button("답장 1개 생성", type="primary"):
+    if st.button("답장 1개 생성", type="primary", disabled=st.session_state.get("_generation_running", False)):
         run_generation(user_letter)
-        st.rerun()
     if st.session_state.generated_reply:
         st.markdown("### 생성된 답장")
         st.write(st.session_state.generated_reply)
@@ -1860,9 +1885,8 @@ elif st.session_state.node == "screen_reply":
             height=320,
         )
         st.session_state.screening_reply_editor = screening_reply
-    if st.button("스크리닝 실행", type="primary"):
+    if st.button("스크리닝 실행", type="primary", disabled=st.session_state.get("_screening_running", False)):
         run_screening(screening_reply, user_letter_to_agent)
-        st.rerun()
     render_screening_result()
     render_last_llm_io()
     if st.session_state.screening_result:
@@ -1878,7 +1902,7 @@ elif st.session_state.node == "improve_prompt":
     if system_reply:
         with st.expander("현재 시스템 답장", expanded=False):
             st.write(system_reply)
-    if st.button("개선 답장 생성", type="primary"):
+    if st.button("개선 답장 생성", type="primary", disabled=st.session_state.get("_improvement_running", False)):
         run_improvement_prompt()
     if st.session_state.improved_reply:
         render_last_llm_io()
