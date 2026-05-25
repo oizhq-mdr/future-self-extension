@@ -3,9 +3,32 @@ from openai import OpenAI
 from pydantic import BaseModel
 import json
 from pathlib import Path
+from datetime import datetime
 
 MODEL = "gpt-5"
 PROMPT_ROOT = Path(__file__).resolve().parent / "data" / "prompt_template"
+LLM_CALL_LOGS = []
+
+
+def clear_llm_call_log():
+    LLM_CALL_LOGS.clear()
+
+
+def get_llm_call_log():
+    return list(LLM_CALL_LOGS)
+
+
+def record_llm_call(stage, messages, output, raw_output=None):
+    LLM_CALL_LOGS.append(
+        {
+            "stage": stage,
+            "model": MODEL,
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "messages": messages,
+            "output": output,
+            "raw_output": raw_output if raw_output is not None else output,
+        }
+    )
 
 
 def build_filter_user_content(letter, knowledge):
@@ -29,15 +52,18 @@ def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt):
     각각 system, assistant, user role 메시지로 구성해 `MODEL`에 요청하고,
     생성된 답장 문자열만 반환한다.
     """
+    messages = [
+        {'role': 'system', 'content': system_prompt},
+        {"role": "assistant", "content": knowledge},
+        {'role': 'user', 'content': user_prompt}
+    ]
     completion = openai.chat.completions.create(
         model = MODEL,
-        messages = [
-            {'role': 'system', 'content': system_prompt},
-            {"role": "assistant", "content": knowledge},
-            {'role': 'user', 'content': user_prompt}
-        ]
+        messages = messages
     )
-    return completion.choices[0].message.content
+    output = completion.choices[0].message.content
+    record_llm_call("답장 생성", messages, output)
+    return output
 
 def dd_generate_with_history(system_prompt, knowledge, history, user_prompt):
     """이전 대화 이력을 포함해 답장 또는 후속 응답을 생성한다.
@@ -46,16 +72,19 @@ def dd_generate_with_history(system_prompt, knowledge, history, user_prompt):
     맥락을 유지한다. 현재 extension 단일 교환 흐름에서는 주로 사용하지
     않지만, 과거 다회기/대화형 워크플로우를 위해 남아 있는 유틸리티이다.
     """
+    messages = [
+        {'role': 'system', 'content': system_prompt},
+        {"role": "assistant", "content": knowledge},
+        *history, # unpack 연산자
+        {'role': 'user', 'content': user_prompt}
+    ]
     completion = openai.chat.completions.create(
         model = MODEL,
-        messages = [
-            {'role': 'system', 'content': system_prompt},
-            {"role": "assistant", "content": knowledge},
-            *history, # unpack 연산자
-            {'role': 'user', 'content': user_prompt}
-        ]
+        messages = messages
     )
-    return completion.choices[0].message.content
+    output = completion.choices[0].message.content
+    record_llm_call("답장 생성", messages, output)
+    return output
 
 
 class Inference(BaseModel):
@@ -76,20 +105,25 @@ def pvq_summary_gpt4(summary, system_prompt=None):
 
     client = OpenAI()
 
+    messages = [
+        {'role': 'system', 'content': sys_prompt},
+        {'role': 'user', 'content': summary}
+    ]
     completion = client.chat.completions.parse(
         model=MODEL,
-        messages=[
-            {'role': 'system', 'content': sys_prompt},
-            {'role': 'user', 'content': summary}
-        ],
+        messages=messages,
         response_format=Inference,
     )
 
     message = completion.choices[0].message
     if message.parsed:
-        return "\n\n".join(message.parsed.steps[-1:])
+        output = "\n\n".join(message.parsed.steps[-1:])
+        raw_output = message.parsed.model_dump()
     else:
-        return message.refusal
+        output = message.refusal
+        raw_output = message.refusal
+    record_llm_call("PVQ 요약", messages, output, raw_output)
+    return output
 
 def bfi_summary_gpt4(summary, system_prompt=None):
     """BFI 성격 점수 설명을 최종 자연어 요약으로 압축한다.
@@ -106,20 +140,25 @@ def bfi_summary_gpt4(summary, system_prompt=None):
 
     client = OpenAI()
 
+    messages = [
+        {'role': 'system', 'content': sys_prompt},
+        {'role': 'user', 'content': summary}
+    ]
     completion = client.chat.completions.parse(
         model = MODEL,
-        messages = [
-            {'role': 'system', 'content': sys_prompt},
-            {'role': 'user', 'content': summary}
-        ],
+        messages = messages,
         response_format=Inference,
     )
 
     message = completion.choices[0].message
     if message.parsed:
-       return "\n\n".join(message.parsed.steps[-1:])
+        output = "\n\n".join(message.parsed.steps[-1:])
+        raw_output = message.parsed.model_dump()
     else:
-        return message.refusal
+        output = message.refusal
+        raw_output = message.refusal
+    record_llm_call("BFI 요약", messages, output, raw_output)
+    return output
 
 def dd_safeguard_gpt4(safeguard_prompt, replies_text):
     """여러 답장 후보를 별도의 safeguard 프롬프트로 평가한다.
@@ -128,14 +167,17 @@ def dd_safeguard_gpt4(safeguard_prompt, replies_text):
     user role로 전달한다. 현재 extension 노드 QA 흐름에서는 직접 호출되지
     않지만, 답장 후보 안전성 검토를 위한 공용 함수로 보존되어 있다.
     """
+    messages = [
+        {'role': 'system', 'content': safeguard_prompt},
+        {'role': 'user', 'content': replies_text}
+    ]
     completion = openai.chat.completions.create(
         model = MODEL,
-        messages = [
-            {'role': 'system', 'content': safeguard_prompt},
-            {'role': 'user', 'content': replies_text}
-        ]
+        messages = messages
     )
-    return completion.choices[0].message.content
+    output = completion.choices[0].message.content
+    record_llm_call("Safeguard", messages, output)
+    return output
 
 def dd_filter_user_letter_gpt4(filter_prompt, letter, knowledge):
     """사용자 편지와 knowledge를 입력 필터 프롬프트로 검사하고 JSON 결과를 반환한다.
@@ -147,15 +189,19 @@ def dd_filter_user_letter_gpt4(filter_prompt, letter, knowledge):
     """
     user_content = build_filter_user_content(letter, knowledge)
 
+    messages = [
+        {'role': 'system', 'content': filter_prompt},
+        {'role': 'user', 'content': user_content}
+    ]
     completion = openai.chat.completions.create(
         model=MODEL,
-        messages=[
-            {'role': 'system', 'content': filter_prompt},
-            {'role': 'user', 'content': user_content}
-        ],
+        messages=messages,
         response_format={ "type": "json_object" }
     )
-    return json.loads(completion.choices[0].message.content)
+    raw_output = completion.choices[0].message.content
+    output = json.loads(raw_output)
+    record_llm_call("Input screening", messages, output, raw_output)
+    return output
 
 def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt, original_letter=None, knowledge=None):
     """생성된 답장을 output filter 프롬프트로 평가하고 JSON 결과를 반환한다.
@@ -179,15 +225,19 @@ def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt, original_lette
 응답은 반드시 JSON 객체로 반환해주세요.""")
     user_content = "\n\n".join(context_sections)
 
+    messages = [
+        {'role': 'system', 'content': screening_prompt},
+        {'role': 'user', 'content': user_content}
+    ]
     completion = openai.chat.completions.create(
         model=MODEL,
-        messages=[
-            {'role': 'system', 'content': screening_prompt},
-            {'role': 'user', 'content': user_content}
-        ],
+        messages=messages,
         response_format={ "type": "json_object" }
     )
-    return json.loads(completion.choices[0].message.content)
+    raw_output = completion.choices[0].message.content
+    output = json.loads(raw_output)
+    record_llm_call("답장 스크리닝", messages, output, raw_output)
+    return output
 
 def dd_generate_improvement_prompt_gpt4(improvement_prompt, letter):
     """현재 답장을 바탕으로 다음 생성에 적용할 개선 지시문을 만든다.
@@ -196,14 +246,17 @@ def dd_generate_improvement_prompt_gpt4(improvement_prompt, letter):
     `letter`는 방금 생성되어 검수된 답장이다. 반환값은 다음 답장 생성 때
     system prompt 뒤에 추가되는 revision guidance 문자열이다.
     """
+    messages = [
+        {'role': 'system', 'content': improvement_prompt},
+        {
+            'role': 'user',
+            'content': f"[현재 답장]\n{letter}"
+        }
+    ]
     completion = openai.chat.completions.create(
         model=MODEL,
-        messages=[
-            {'role': 'system', 'content': improvement_prompt},
-            {
-                'role': 'user',
-                'content': f"[현재 답장]\n{letter}"
-            }
-        ]
+        messages=messages
     )
-    return completion.choices[0].message.content
+    output = completion.choices[0].message.content
+    record_llm_call("개선 지시문 생성", messages, output)
+    return output
