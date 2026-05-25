@@ -1260,7 +1260,7 @@ def run_improvement_prompt():
                 st.session_state.bfi,
                 st.session_state.pvq,
                 st.session_state.future_self,
-                st.session_state.generation_letter_editor,
+                current_user_letter_for_context(),
                 system_reply,
                 st.session_state.screening_result,
             )
