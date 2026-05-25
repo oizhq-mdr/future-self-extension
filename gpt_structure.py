@@ -239,24 +239,43 @@ def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt, original_lette
     record_llm_call("답장 스크리닝", messages, output, raw_output)
     return output
 
-def dd_generate_improvement_prompt_gpt4(improvement_prompt, letter):
-    """현재 답장을 바탕으로 다음 생성에 적용할 개선 지시문을 만든다.
+def dd_generate_improvement_prompt_gpt4(
+    improvement_prompt,
+    participant_name,
+    knowledge,
+    original_letter,
+    previous_letter,
+    screening_feedback,
+):
+    """스크리닝 피드백을 바탕으로 이전 답장의 개선본을 생성한다."""
+    if isinstance(screening_feedback, (dict, list)):
+        feedback_text = json.dumps(screening_feedback, ensure_ascii=False, indent=2)
+    else:
+        feedback_text = str(screening_feedback)
 
-    `improvement_prompt`는 improvement Markdown 파일의 시스템 프롬프트이고,
-    `letter`는 방금 생성되어 검수된 답장이다. 반환값은 다음 답장 생성 때
-    system prompt 뒤에 추가되는 revision guidance 문자열이다.
-    """
+    user_content = f"""[PARTICIPANT_NAME]
+{participant_name}
+
+[PRESENT_SELF_AND_FUTURE_SELF]
+{knowledge}
+
+[LETTER]
+{original_letter}
+
+[PREVIOUS_LETTER]
+{previous_letter}
+
+[SCREENING_FEEDBACK]
+{feedback_text}"""
+
     messages = [
         {'role': 'system', 'content': improvement_prompt},
-        {
-            'role': 'user',
-            'content': f"[현재 답장]\n{letter}"
-        }
+        {'role': 'user', 'content': user_content}
     ]
     completion = openai.chat.completions.create(
         model=MODEL,
         messages=messages
     )
     output = completion.choices[0].message.content
-    record_llm_call("개선 지시문 생성", messages, output)
+    record_llm_call("개선 답장 생성", messages, output)
     return output

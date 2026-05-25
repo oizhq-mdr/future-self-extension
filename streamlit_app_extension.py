@@ -214,7 +214,7 @@ def init_state():
     """Streamlit session_state에 앱 전체에서 사용하는 기본 상태값을 초기화한다.
 
     현재 노드, 선택 사용자, knowledge, 프롬프트 선택 경로, 편지 편집기,
-    필터/스크리닝 결과, 개선 지시문 등 QA 흐름에 필요한 키를 한 번만
+    필터/스크리닝 결과, 개선 답장 등 QA 흐름에 필요한 키를 한 번만
     설정한다. 이미 존재하는 값은 유지해 rerun 시 사용자 입력이 사라지지
     않게 한다.
     """
@@ -246,6 +246,7 @@ def init_state():
         "screening_result": None,
         "output_filter_state": None,
         "improvement_prompt": "",
+        "improved_reply": "",
         "last_llm_io": [],
         "default_notice": "",
         "_synced_query_node": None,
@@ -658,7 +659,7 @@ def sync_screening_reply_editor(generated_reply):
 def reset_user_outputs():
     """사용자 변경 시 이전 사용자에게 속한 산출물 상태를 초기화한다.
 
-    knowledge, 필터 결과, 생성 답장, 스크리닝 결과, 개선 지시문과 편지
+    knowledge, 필터 결과, 생성 답장, 스크리닝 결과, 개선 답장과 편지
     편집기 로딩 기준을 모두 비워서 새 사용자 데이터와 이전 결과가 섞이지
     않도록 한다.
     """
@@ -681,6 +682,7 @@ def reset_user_outputs():
     st.session_state.screening_result = None
     st.session_state.output_filter_state = None
     st.session_state.improvement_prompt = ""
+    st.session_state.improved_reply = ""
     st.session_state.last_llm_io = []
 
 
@@ -699,7 +701,7 @@ def graph_node_state(node_id):
     """노드 ID에 대응하는 현재 그래프 표시 상태를 계산한다.
 
     현재 열려 있는 노드는 active, 산출물이 있는 노드는 ready, 차단된 입력
-    필터는 blocked, 개선 프롬프트가 있는 노드는 loop로 표시한다. 산출물이
+    필터는 blocked, 개선 답장이 있는 노드는 loop로 표시한다. 산출물이
     없으면 empty를 반환해 QA Graph의 CSS 클래스에 사용한다.
     """
     if st.session_state.node == node_id:
@@ -714,7 +716,7 @@ def graph_node_state(node_id):
         return "ready"
     if node_id == "screen_reply" and st.session_state.screening_result:
         return "ready"
-    if node_id == "improve_prompt" and st.session_state.improvement_prompt:
+    if node_id == "improve_prompt" and st.session_state.improved_reply:
         return "loop"
     return "empty"
 
@@ -809,7 +811,7 @@ def render_node_nav(extension_df):
     {graph_node("edit_prompt", "System Prompt", "프롬프트+생성", 1020, 132, state("edit_prompt"))}
     {graph_node("screen_reply", "Output Filter", "답장 품질 검수", 1295, 132, state("screen_reply"))}
     {graph_note("screen_reply", "Final", "통과 후보", 1545, 60, final_state)}
-    {graph_node("improve_prompt", "Improve", "개선 지시문", 1545, 206, state("improve_prompt"))}
+    {graph_node("improve_prompt", "Improve", "개선 답장", 1545, 206, state("improve_prompt"))}
   </div>
 </div>
 """
@@ -928,15 +930,15 @@ def render_screening_prompt_selector():
 
 
 def render_improvement_prompt_selector():
-    """개선 지시문 생성 프롬프트 선택 UI와 편집기를 렌더링한다.
+    """개선 답장 생성 프롬프트 선택 UI와 편집기를 렌더링한다.
 
     `extension_prompts/improvement` 폴더의 Markdown 파일을 선택하고 편집할 수
-    있게 한다. 선택된 프롬프트는 현재 답장을 분석해 다음 생성에 붙일 revision
-    guidance를 만드는 데 사용된다.
+    있게 한다. 선택된 프롬프트는 이전 답장과 스크리닝 피드백을 바탕으로
+    수정된 답장을 만드는 데 사용된다.
     """
     improvement_options = prompt_options("improvement")
     st.selectbox(
-        "개선 프롬프트 생성 프롬프트",
+        "개선 답장 생성 프롬프트",
         options=improvement_options,
         format_func=prompt_label,
         key="selected_improvement_prompt_path",
@@ -1028,16 +1030,12 @@ def run_knowledge(user_row):
 
 
 def generation_prompt_with_improvement(system_prompt=None):
-    """현재 답장 생성 system prompt에 개선 지시문을 조건부로 덧붙인다.
+    """현재 답장 생성 system prompt를 반환한다.
 
-    기본값은 `st.session_state.system_prompt`이며, 개선 프롬프트 노드에서 만든
-    `improvement_prompt`가 있으면 `[Additional revision guidance]` 섹션으로
-    이어 붙여 다음 답장 생성에 반영한다.
+    개선 단계는 이제 별도 수정 답장을 생성하므로, 답장 생성 프롬프트에는
+    추가 revision guidance를 붙이지 않는다.
     """
-    system_prompt = current_generation_prompt_text() if system_prompt is None else system_prompt
-    if st.session_state.improvement_prompt:
-        return f"{system_prompt}\n\n[Additional revision guidance]\n{st.session_state.improvement_prompt}"
-    return system_prompt
+    return current_generation_prompt_text() if system_prompt is None else system_prompt
 
 
 def run_generation(user_letter):
@@ -1050,6 +1048,8 @@ def run_generation(user_letter):
     """
     st.session_state.screening_result = None
     st.session_state.output_filter_state = None
+    st.session_state.improvement_prompt = ""
+    st.session_state.improved_reply = ""
     with st.spinner("답장 1개를 생성하는 중..."):
         try:
             clear_llm_call_log()
@@ -1090,20 +1090,22 @@ def run_screening(reply):
 
 
 def run_improvement_prompt():
-    """현재 생성 답장을 바탕으로 다음 생성용 개선 지시문을 만든다.
-
-    선택된 improvement 프롬프트와 `generated_reply`를 OpenAI에 보내 revision
-    guidance를 생성하고 `st.session_state.improvement_prompt`에 저장한다. 이
-    값은 이후 `generation_prompt_with_improvement()`를 통해 system prompt에
-    추가된다.
-    """
+    """스크리닝 피드백을 바탕으로 이전 답장의 개선본을 생성한다."""
     improvement_system_prompt = read_prompt(st.session_state.selected_improvement_prompt_path)
-    with st.spinner("다음 생성을 위한 개선 지시문을 만드는 중..."):
+    previous_letter = st.session_state.screened_reply or st.session_state.generated_reply
+    if not previous_letter or not st.session_state.screening_result:
+        st.warning("개선 답장을 만들기 전에 먼저 답장 스크리닝을 실행하세요.")
+        st.stop()
+    with st.spinner("스크리닝 피드백을 반영해 답장을 개선하는 중..."):
         try:
             clear_llm_call_log()
-            st.session_state.improvement_prompt = dd_generate_improvement_prompt_gpt4(
+            st.session_state.improved_reply = dd_generate_improvement_prompt_gpt4(
                 improvement_system_prompt,
-                st.session_state.screened_reply or st.session_state.generated_reply,
+                st.session_state.user_name,
+                st.session_state.knowledge,
+                st.session_state.generation_letter_editor,
+                previous_letter,
+                st.session_state.screening_result,
             )
             st.session_state.last_llm_io = get_llm_call_log()
         except openai.AuthenticationError:
@@ -1516,12 +1518,6 @@ elif st.session_state.node == "edit_prompt":
             height=260,
         )
         st.session_state.generation_letter_editor = user_letter
-    if st.session_state.improvement_prompt:
-        with st.expander("현재 적용 중인 개선 지시문", expanded=True):
-            st.write(st.session_state.improvement_prompt)
-            if st.button("개선 지시문 제거"):
-                st.session_state.improvement_prompt = ""
-                st.rerun()
     if st.button("답장 1개 생성", type="primary"):
         run_generation(user_letter)
         st.rerun()
@@ -1564,17 +1560,26 @@ elif st.session_state.node == "improve_prompt":
     st.subheader("6. 개선 프롬프트")
     render_improvement_prompt_selector()
     render_screening_result()
-    if st.button("개선 지시문 생성", type="primary"):
+    previous_letter = st.session_state.screened_reply or st.session_state.generated_reply
+    if previous_letter:
+        with st.expander("이전 답장", expanded=False):
+            st.write(previous_letter)
+    if st.button("개선 답장 생성", type="primary"):
         run_improvement_prompt()
         st.rerun()
-    if st.session_state.improvement_prompt:
+    if st.session_state.improved_reply:
         render_last_llm_io()
-        edited_improvement_prompt = st.text_area(
-            "다음 답장 생성에 적용할 개선 지시문",
-            value=st.session_state.improvement_prompt,
-            height=220,
+        edited_improved_reply = st.text_area(
+            "개선된 답장",
+            value=st.session_state.improved_reply,
+            height=320,
         )
-        st.session_state.improvement_prompt = edited_improvement_prompt
-        if st.button("적용하고 시스템 프롬프트로 이동", type="primary"):
-            st.session_state.node = "edit_prompt"
+        st.session_state.improved_reply = edited_improved_reply
+        if st.button("개선된 답장으로 교체하고 스크리닝으로 이동", type="primary"):
+            st.session_state.generated_reply = st.session_state.improved_reply
+            st.session_state.screened_reply = st.session_state.improved_reply
+            st.session_state.screening_reply_editor = st.session_state.improved_reply
+            st.session_state.screening_result = None
+            st.session_state.output_filter_state = None
+            st.session_state.node = "screen_reply"
             st.rerun()
