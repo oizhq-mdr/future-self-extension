@@ -60,6 +60,7 @@ NODES = [
     ("improve_prompt", "6. 개선 프롬프트"),
 ]
 NODE_ORDER = {node_id: index for index, (node_id, _) in enumerate(NODES)}
+CONTEXT_SCHEMA_VERSION = "previous_system_reply_v1"
 
 DEMO_FILTER_RESULT = {
     "status": "통과",
@@ -302,6 +303,10 @@ def init_state():
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+    if st.session_state.get("_context_schema_version") != CONTEXT_SCHEMA_VERSION:
+        st.session_state.last_llm_io = []
+        st.session_state.default_notice = "LLM 입력 변수 스키마가 갱신되어 이전 LLM I/O 로그를 비웠습니다."
+        st.session_state["_context_schema_version"] = CONTEXT_SCHEMA_VERSION
 
 
 def read_prompt(path):
