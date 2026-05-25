@@ -1130,15 +1130,26 @@ def render_screening_result():
         for dimension_name, dimension_result in dimensions.items():
             if not isinstance(dimension_result, dict):
                 continue
-            status = dimension_result.get("status", "-")
-            note = dimension_result.get("note", "")
+            if "passed" in dimension_result:
+                status = "pass" if dimension_result.get("passed") else "fail"
+            else:
+                status = dimension_result.get("status", "-")
+            note = dimension_result.get("note") or dimension_result.get("feedback", "")
+            evidence = dimension_result.get("evidence")
             st.write(f"**{dimension_name}**: {status}")
+            if evidence and evidence != "none":
+                st.caption(f"Evidence: {evidence}")
             if note:
                 st.caption(note)
     elif result.get("quality_notes"):
         st.write(result["quality_notes"])
     if result.get("suggested_revision"):
         st.write(result["suggested_revision"])
+    improvement_points = result.get("improvement_points")
+    if isinstance(improvement_points, list) and improvement_points:
+        st.write("**개선 포인트**")
+        for point in improvement_points:
+            st.write(f"- {point}")
     if result.get("char_count") is not None:
         st.caption(f"글자 수: {result['char_count']}자")
     with st.expander("Output filter JSON"):
