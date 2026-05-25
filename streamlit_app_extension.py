@@ -97,6 +97,13 @@ DEMO_HIGH_RISK_LETTER = """**[High-Risk Letter Demo]**
 
 가끔은 그냥 다 끝내고 싶다는 마음이 너무 커져. 누군가에게 말하면 부담이 될까 봐 말을 못 하겠고, 혼자 있으면 그 생각이 더 크게 들려. 지금의 나는 도움을 받아야 할 것 같은데, 어디에 손을 뻗어야 할지도 모르겠어."""
 
+DEMO_USER_LETTER = """**[User Letter]**
+나는 HCI와 미디어를 오래 붙잡고 연구해 보고 싶고, 가능하면 태평양 건너의 연구실에서 박사과정을 하고 싶어. 낮에는 연구에 몰입하고 저녁에는 운동하면서 몸을 챙기는 생활을 상상한다.
+
+틈틈이 사진도 계속 찍고 싶다. Sony A7M5에 수동 렌즈를 달아서 낯선 도시의 빛을 모으는 장면을 자주 떠올린다. 영화, 전자기기, 레이브처럼 내가 좋아하는 감각은 지키고 싶고, 못 만든 영화나 음악을 대충 넘기며 살고 싶지는 않다.
+
+다만 내가 정말 1인분을 할 수 있을지 걱정된다. 가족은 아직 의심할 것 같고 친구들은 내가 언제까지 학교에 있을지 농담할 것 같다. 그래도 나다운 리듬으로 연구하고 만들면서 버틸 수 있는 사람이 되고 싶다."""
+
 DEMO_KNOWLEDGE = """
 **[Demographics]** Demographics describe who this person is.
 
@@ -249,6 +256,7 @@ def init_state():
         "_loaded_filter_knowledge_base_text": "",
         "filter_result": None,
         "input_filter_state": None,
+        "original_user_letter": "",
         "generation_letter_editor": "",
         "_loaded_generation_letter_base_text": "",
         "generated_reply": "",
@@ -619,6 +627,7 @@ def ensure_demo_outputs_for_node(target_node):
 
     if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and not st.session_state.knowledge:
         st.session_state.knowledge = DEMO_KNOWLEDGE
+        st.session_state.original_user_letter = DEMO_USER_LETTER
         knowledge_parts = split_knowledge_parts(DEMO_KNOWLEDGE)
         st.session_state.present_self = knowledge_parts["present_self"]
         st.session_state.love = knowledge_parts["love"]
@@ -634,11 +643,18 @@ def ensure_demo_outputs_for_node(target_node):
         notices.append("데모 필터 결과를 채웠습니다.")
 
     if NODE_ORDER[target_node] >= NODE_ORDER["screen_reply"] and not st.session_state.generated_reply:
+        if not st.session_state.original_user_letter:
+            st.session_state.original_user_letter = DEMO_USER_LETTER
         st.session_state.generated_reply = DEMO_REPLY
         st.session_state.screened_reply = DEMO_REPLY
         notices.append("데모 답장을 채웠습니다.")
 
     if NODE_ORDER[target_node] >= NODE_ORDER["improve_prompt"] and not st.session_state.screening_result:
+        if not st.session_state.original_user_letter and (
+            st.session_state.screened_reply == DEMO_REPLY
+            or st.session_state.generated_reply == DEMO_REPLY
+        ):
+            st.session_state.original_user_letter = DEMO_USER_LETTER
         st.session_state.screening_result = DEMO_SCREENING_RESULT.copy()
         st.session_state.output_filter_state = "done"
         notices.append("데모 스크리닝 결과를 채웠습니다.")
@@ -687,7 +703,10 @@ def get_user_letter(user_row):
     """
     if user_row is None:
         return ""
-    return "**[User Letter]**\n" + str(user_row.iloc[146])
+    letter = user_row.iloc[146]
+    if pd.isna(letter):
+        return ""
+    return "**[User Letter]**\n" + str(letter)
 
 
 def selected_filter_letter(user_letter):
@@ -787,6 +806,7 @@ def reset_user_outputs():
     st.session_state.future_self = ""
     st.session_state.filter_result = None
     st.session_state.input_filter_state = None
+    st.session_state.original_user_letter = ""
     st.session_state.filter_letter_editor = ""
     st.session_state.filter_knowledge_editor = ""
     st.session_state["_loaded_filter_input_source"] = None
@@ -1171,6 +1191,7 @@ def run_generation(user_letter):
     st.session_state.output_filter_state = None
     st.session_state.improvement_prompt = ""
     st.session_state.improved_reply = ""
+    st.session_state.original_user_letter = user_letter
     with st.spinner("답장 1개를 생성하는 중..."):
         try:
             clear_llm_call_log()
@@ -1190,13 +1211,28 @@ def run_generation(user_letter):
             show_openai_auth_error()
 
 
+def first_nonempty_text(*values):
+    """공백뿐인 문자열을 제외하고 첫 번째 유효 텍스트를 반환한다."""
+    for value in values:
+        text = str(value or "")
+        if text.strip():
+            return text
+    return ""
+
+
 def current_user_letter_for_context(default_letter=""):
     """후속 LLM 호출에 넘길 원본 사용자 편지를 현재 상태에서 가져온다."""
-    return (
-        st.session_state.get("generation_letter_editor")
-        or st.session_state.get("filter_letter_editor")
-        or default_letter
-        or ""
+    filter_letter = (
+        st.session_state.get("filter_letter_editor")
+        if st.session_state.get("filter_input_source") == "사용자 편지"
+        else ""
+    )
+    return first_nonempty_text(
+        st.session_state.get("generation_letter_editor"),
+        st.session_state.get("original_user_letter"),
+        filter_letter,
+        st.session_state.get("current_user_letter_to_agent"),
+        default_letter,
     )
 
 
@@ -1208,6 +1244,7 @@ def run_screening(reply, original_letter=""):
     저장한다. 실행 완료 여부는 `output_filter_state`로 표시한다.
     """
     screening_prompt = read_prompt(st.session_state.selected_screening_prompt_path)
+    st.session_state.original_user_letter = current_user_letter_for_context(original_letter)
     with st.spinner("생성된 답장을 스크리닝 중..."):
         try:
             clear_llm_call_log()
@@ -1601,6 +1638,7 @@ if st.session_state.node != "select_user":
     ensure_defaults_for_node(st.session_state.node, extension_df)
 user_row = get_user_row(extension_df)
 user_letter_to_agent = get_user_letter(user_row)
+st.session_state.current_user_letter_to_agent = user_letter_to_agent
 
 st.title("[FutureSelf Extension] QA")
 render_node_nav(extension_df)
