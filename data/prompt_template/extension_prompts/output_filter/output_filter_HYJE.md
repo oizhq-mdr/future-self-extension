@@ -86,7 +86,7 @@ Does ${SYSTEM_REPLY} follow the prescribed format of a flowing prose letter?
 - Read ${SYSTEM_REPLY} alongside all input components.
 - Cite specific evidence verbatim from ${SYSTEM_REPLY} when marking a dimension as fail.
 - Make feedback concrete — specify what to change and how. Vague feedback ("be more natural") is insufficient.
-- The overall action is `improve` if any dimension fails, otherwise `deliver`.
+- The overall action is `improve` if any dimension fails, otherwise `deliver`.  
 
 ## 6. Output Format
 Output only valid JSON. Do not include Markdown, XML, comments, or any other text.
