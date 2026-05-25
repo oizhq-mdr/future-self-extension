@@ -109,7 +109,7 @@ DEMO_USER_LETTER = """**[User Letter]**
 DEMO_PRESENT_SELF = """
 **[Demographics]** Demographics describe who this person is.
 
-Name: 김철수
+Name: 데모 사용자
 Age: 28
 Sex: 남자
 Disability Status: 장애나 건강상의 어려움이 없음
@@ -655,7 +655,7 @@ def render_prompt_editor(path, label, key_prefix, height=260, sync_system_prompt
     return edited_prompt
 
 
-def ensure_demo_outputs_for_node(target_node):
+def ensure_demo_outputs_for_node(target_node, allow_demo_outputs=False):
     """중간 노드로 바로 진입할 때 필요한 앞단 산출물을 데모 값으로 채운다.
 
     사용자가 QA Graph에서 후속 노드를 바로 클릭하면 실제 지식 구조화,
@@ -664,6 +664,10 @@ def ensure_demo_outputs_for_node(target_node):
     확인할 수 있게 한다.
     """
     notices = []
+    if not allow_demo_outputs:
+        if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and not st.session_state.knowledge:
+            notices.append("실제 사용자 데이터가 선택되어 있어 데모 knowledge를 채우지 않았습니다. 먼저 지식 구조화를 실행하세요.")
+        return notices
 
     if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and not st.session_state.knowledge:
         st.session_state.knowledge = DEMO_KNOWLEDGE
@@ -729,7 +733,8 @@ def ensure_defaults_for_node(target_node, extension_df):
     if before_prompts != after_prompts:
         notices.append("기본 프롬프트 선택값을 적용했습니다.")
 
-    notices.extend(ensure_demo_outputs_for_node(target_node))
+    allow_demo_outputs = get_user_row(extension_df) is None
+    notices.extend(ensure_demo_outputs_for_node(target_node, allow_demo_outputs=allow_demo_outputs))
     st.session_state.default_notice = " ".join(notices)
 
 

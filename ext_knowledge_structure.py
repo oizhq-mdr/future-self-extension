@@ -48,7 +48,7 @@ def ext_demo_generate(row):
     has_disability = '있' in hea_dis_val
     
     demo = demo_template.format(
-        NAME = "이철수",
+        NAME=row.iloc[0],
         AGE=row.iloc[78],
         SEX=row.iloc[79],
         HEA_DIS=hea_dis_val if has_disability else '장애나 건강상의 어려움이 없음',
