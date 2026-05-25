@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -367,6 +368,49 @@ def render_last_llm_io(title="실제 LLM I/O"):
                             label_visibility="collapsed",
                             key=f"llm_io_{call_index}_raw_output",
                         )
+
+
+def render_global_variable_panel(user_letter_to_agent):
+    """현재 LLM 입력 변수들을 모든 노드에서 확인할 수 있게 표시한다."""
+    present_self = st.session_state.get("present_self", "")
+    future_self = st.session_state.get("future_self", "")
+    if (not present_self and not future_self) and st.session_state.get("knowledge"):
+        knowledge_parts = split_knowledge_parts(st.session_state.knowledge)
+        present_self = knowledge_parts["present_self"]
+        future_self = knowledge_parts["future_self"]
+
+    letter = (
+        st.session_state.get("generation_letter_editor")
+        or st.session_state.get("filter_letter_editor")
+        or user_letter_to_agent
+        or ""
+    )
+    previous_letter = st.session_state.get("screened_reply") or st.session_state.get("generated_reply", "")
+    screening_feedback = st.session_state.get("screening_result")
+    if screening_feedback:
+        screening_feedback_text = json.dumps(screening_feedback, ensure_ascii=False, indent=2)
+    else:
+        screening_feedback_text = ""
+
+    variables = [
+        ("PARTICIPANT_NAME", st.session_state.get("user_name") or ""),
+        ("PRESENT_SELF", present_self),
+        ("FUTURE_SELF", future_self),
+        ("LETTER", letter),
+        ("PREVIOUS_LETTER", previous_letter),
+        ("SCREENING_FEEDBACK", screening_feedback_text),
+    ]
+
+    with st.expander("Global Variables", expanded=False):
+        for variable_name, variable_value in variables:
+            st.text_area(
+                variable_name,
+                value=variable_value,
+                height=80 if variable_name == "PARTICIPANT_NAME" else 220,
+                disabled=True,
+                key=f"global_variable_{variable_name.lower()}",
+            )
+
 
 def current_generation_prompt_text(editor_prompt=None):
     """현재 답장 생성 단계에서 사용할 system prompt 텍스트를 반환한다.
@@ -1453,6 +1497,7 @@ user_letter_to_agent = get_user_letter(user_row)
 
 st.title("[FutureSelf Extension] QA")
 render_node_nav(extension_df)
+render_global_variable_panel(user_letter_to_agent)
 st.markdown("---")
 
 if st.session_state.node == "select_user":
