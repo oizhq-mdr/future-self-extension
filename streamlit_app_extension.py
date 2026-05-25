@@ -439,12 +439,7 @@ def render_global_variable_panel(user_letter_to_agent):
         pvq = knowledge_parts["pvq"]
         future_self = knowledge_parts["future_self"]
 
-    letter = (
-        st.session_state.get("generation_letter_editor")
-        or st.session_state.get("filter_letter_editor")
-        or user_letter_to_agent
-        or ""
-    )
+    letter = current_user_letter_for_context(user_letter_to_agent)
     system_reply = (
         st.session_state.get("improved_reply")
         or st.session_state.get("screened_reply")
@@ -1195,7 +1190,17 @@ def run_generation(user_letter):
             show_openai_auth_error()
 
 
-def run_screening(reply):
+def current_user_letter_for_context(default_letter=""):
+    """후속 LLM 호출에 넘길 원본 사용자 편지를 현재 상태에서 가져온다."""
+    return (
+        st.session_state.get("generation_letter_editor")
+        or st.session_state.get("filter_letter_editor")
+        or default_letter
+        or ""
+    )
+
+
+def run_screening(reply, original_letter=""):
     """생성된 답장을 output filter 프롬프트로 검수한다.
 
     현재 스크리닝 대상으로 선택된 답장과 output filter 프롬프트를 OpenAI에
@@ -1209,7 +1214,7 @@ def run_screening(reply):
             result = dd_evaluate_letter_with_prompt_gpt4(
                 reply,
                 screening_prompt,
-                original_letter=st.session_state.generation_letter_editor,
+                original_letter=current_user_letter_for_context(original_letter),
                 knowledge=st.session_state.knowledge,
             )
         except openai.AuthenticationError:
@@ -1719,7 +1724,7 @@ elif st.session_state.node == "screen_reply":
         )
         st.session_state.screening_reply_editor = screening_reply
     if st.button("스크리닝 실행", type="primary"):
-        run_screening(screening_reply)
+        run_screening(screening_reply, user_letter_to_agent)
         st.rerun()
     render_screening_result()
     render_last_llm_io()
