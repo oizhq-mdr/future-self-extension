@@ -357,9 +357,9 @@ def dd_evaluate_letter_with_prompt_gpt4(
         context_sections.append(f"""[Background Knowledge]
 {knowledge}""")
     if original_letter:
-        context_sections.append(f"""[Participant's Original Letter]
+        context_sections.append(f"""[USER_LETTER]
 {original_letter}""")
-    context_sections.append(f"""[Generated Future-Self Reply]
+    context_sections.append(f"""[SYSTEM_REPLY]
 {letter}
 
 응답은 반드시 JSON 객체로 반환해주세요.""")
