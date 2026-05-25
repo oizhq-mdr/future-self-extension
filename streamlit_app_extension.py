@@ -916,7 +916,7 @@ def render_node_nav(extension_df):
       <path class="wire main" d="M1175 164 C1235 164 1235 164 1295 164" />
       <path class="wire success" d="M1455 164 C1500 164 1500 92 1545 92" />
       <path class="wire loop" d="M1455 164 C1500 164 1500 238 1545 238" />
-      <path class="wire loop" d="M1705 238 C1765 238 1765 342 1020 342 C960 342 960 268 1020 164" />
+      <path class="wire loop" d="M1705 238 C1765 238 1765 342 1295 342 C1235 342 1235 164 1295 164" />
     </svg>
     <div class="canvas-label" style="left:22px; top:26px;">INPUT</div>
     <div class="canvas-label" style="left:282px; top:26px;">KNOWLEDGE</div>
