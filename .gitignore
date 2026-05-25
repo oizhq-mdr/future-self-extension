@@ -17,6 +17,7 @@ env/
 # OS and IDE files
 .DS_Store
 .idea/
+.devcontainer/
 
 # Local logs
 *.log
