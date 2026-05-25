@@ -385,7 +385,7 @@ def render_global_variable_panel(user_letter_to_agent):
         or user_letter_to_agent
         or ""
     )
-    previous_letter = st.session_state.get("screened_reply") or st.session_state.get("generated_reply", "")
+    previous_reply = st.session_state.get("screened_reply") or st.session_state.get("generated_reply", "")
     screening_feedback = st.session_state.get("screening_result")
     if screening_feedback:
         screening_feedback_text = json.dumps(screening_feedback, ensure_ascii=False, indent=2)
@@ -396,8 +396,8 @@ def render_global_variable_panel(user_letter_to_agent):
         ("PARTICIPANT_NAME", st.session_state.get("user_name") or ""),
         ("PRESENT_SELF", present_self),
         ("FUTURE_SELF", future_self),
-        ("LETTER", letter),
-        ("PREVIOUS_LETTER", previous_letter),
+        ("USER_LETTER", letter),
+        ("PREVIOUS_REPLY", previous_reply),
         ("SCREENING_FEEDBACK", screening_feedback_text),
     ]
 
@@ -1148,8 +1148,8 @@ def run_screening(reply):
 def run_improvement_prompt():
     """스크리닝 피드백을 바탕으로 이전 답장의 개선본을 생성한다."""
     improvement_system_prompt = read_prompt(st.session_state.selected_improvement_prompt_path)
-    previous_letter = st.session_state.screened_reply or st.session_state.generated_reply
-    if not previous_letter or not st.session_state.screening_result:
+    previous_reply = st.session_state.screened_reply or st.session_state.generated_reply
+    if not previous_reply or not st.session_state.screening_result:
         st.warning("개선 답장을 만들기 전에 먼저 답장 스크리닝을 실행하세요.")
         st.stop()
     if not st.session_state.present_self and not st.session_state.future_self:
@@ -1165,7 +1165,7 @@ def run_improvement_prompt():
                 st.session_state.present_self,
                 st.session_state.future_self,
                 st.session_state.generation_letter_editor,
-                previous_letter,
+                previous_reply,
                 st.session_state.screening_result,
             )
             st.session_state.last_llm_io = get_llm_call_log()
@@ -1625,10 +1625,10 @@ elif st.session_state.node == "improve_prompt":
     st.subheader("6. 개선 프롬프트")
     render_improvement_prompt_selector()
     render_screening_result()
-    previous_letter = st.session_state.screened_reply or st.session_state.generated_reply
-    if previous_letter:
+    previous_reply = st.session_state.screened_reply or st.session_state.generated_reply
+    if previous_reply:
         with st.expander("이전 답장", expanded=False):
-            st.write(previous_letter)
+            st.write(previous_reply)
     if st.button("개선 답장 생성", type="primary"):
         run_improvement_prompt()
         st.rerun()

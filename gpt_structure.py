@@ -56,7 +56,7 @@ def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt, participant_na
         user_content = f"""[PRESENT_SELF_AND_FUTURE_SELF]
 {knowledge}
 
-[LETTER]
+[USER_LETTER]
 {user_prompt}"""
     else:
         user_content = f"""[PARTICIPANT_NAME]
@@ -68,7 +68,7 @@ def dd_generate_gpt4_basic(system_prompt, knowledge, user_prompt, participant_na
 [FUTURE_SELF]
 {future_self}
 
-[LETTER]
+[USER_LETTER]
 {user_prompt}"""
 
     messages = [
@@ -263,7 +263,7 @@ def dd_generate_improvement_prompt_gpt4(
     present_self,
     future_self,
     original_letter,
-    previous_letter,
+    previous_reply,
     screening_feedback,
 ):
     """스크리닝 피드백을 바탕으로 이전 답장의 개선본을 생성한다."""
@@ -281,11 +281,11 @@ def dd_generate_improvement_prompt_gpt4(
 [FUTURE_SELF]
 {future_self}
 
-[LETTER]
+[USER_LETTER]
 {original_letter}
 
-[PREVIOUS_LETTER]
-{previous_letter}
+[PREVIOUS_REPLY]
+{previous_reply}
 
 [SCREENING_FEEDBACK]
 {feedback_text}"""
