@@ -242,7 +242,8 @@ def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt, original_lette
 def dd_generate_improvement_prompt_gpt4(
     improvement_prompt,
     participant_name,
-    knowledge,
+    present_self,
+    future_self,
     original_letter,
     previous_letter,
     screening_feedback,
@@ -256,8 +257,11 @@ def dd_generate_improvement_prompt_gpt4(
     user_content = f"""[PARTICIPANT_NAME]
 {participant_name}
 
-[PRESENT_SELF_AND_FUTURE_SELF]
-{knowledge}
+[PRESENT_SELF]
+{present_self}
+
+[FUTURE_SELF]
+{future_self}
 
 [LETTER]
 {original_letter}

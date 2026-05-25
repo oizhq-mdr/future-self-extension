@@ -128,13 +128,53 @@ def ext_knowledge_generate(row, bfi_system_prompt=None, pvq_system_prompt=None):
     순서대로 생성해 빈 줄로 이어 붙인다. 반환된 문자열은 OpenAI 요청에서
     assistant role 메시지로 전달되어 답장 생성의 배경 정보가 된다.
     """
+    parts = ext_knowledge_parts_generate(
+        row,
+        bfi_system_prompt=bfi_system_prompt,
+        pvq_system_prompt=pvq_system_prompt,
+    )
+    return combine_knowledge_parts(parts)
+
+
+def ext_knowledge_parts_generate(row, bfi_system_prompt=None, pvq_system_prompt=None):
+    """현재 자아와 3년 후 미래 자아 정보를 분리해 생성한다."""
     demo = ext_demo_generate(row)
     love_hate = ext_love_hate_generate(row)
     bfi = ext_bfi_generate(row, system_prompt=bfi_system_prompt)
     pvq = ext_pvq_generate(row, system_prompt=pvq_system_prompt)
     future_profile = ext_future_profile_generate(row)
-    
-    knowledge = "\n\n".join([
-        demo, love_hate, bfi, pvq, future_profile
-    ])
-    return knowledge
+
+    return {
+        "present_self": "\n\n".join([demo, love_hate, bfi, pvq]),
+        "future_self": future_profile,
+    }
+
+
+def combine_knowledge_parts(parts):
+    """분리된 knowledge parts를 기존 통합 knowledge 문자열로 합친다."""
+    return "\n\n".join(
+        part
+        for part in [
+            parts.get("present_self", ""),
+            parts.get("future_self", ""),
+        ]
+        if part
+    )
+
+
+def split_knowledge_parts(knowledge):
+    """통합 knowledge 문자열에서 present/future self 섹션을 분리한다."""
+    marker = "[Profile in Three Years]"
+    marker_index = knowledge.find(marker)
+    if marker_index == -1:
+        return {
+            "present_self": knowledge,
+            "future_self": "",
+        }
+
+    line_start = knowledge.rfind("\n", 0, marker_index)
+    split_index = line_start + 1 if line_start != -1 else marker_index
+    return {
+        "present_self": knowledge[:split_index].strip(),
+        "future_self": knowledge[split_index:].strip(),
+    }

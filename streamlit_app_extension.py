@@ -128,7 +128,7 @@ You’re a middle‑of‑the‑road decider: you try to do right by others, but 
 3년 후 나의 만 나이: 31
 3년 후 나의 직업 및 직위: 박사과정
 3년 후 내가 살고 있는 장소와 환경: 기숙사
-3년 후 나의 성격: 츄리닝
+3년 후 즐겨입는 옷 스타일과 외양: 츄리닝
 3년 후 나의 성격: 지금과 똑같지만 좀 더 노이로제에 걸린?
 3년 후 나의 평소 활동 (노력하고 있는 것, 취미 생활 등): 낮에는 연구를 하고, 저녁에 운동을 함. 틈틈히 사진을 찍음
 3년 후 가족들이 인식하는 나의 모습: 쟤가 1인분을 할까?
@@ -222,6 +222,8 @@ def init_state():
         "node": "select_user",
         "user_name": None,
         "knowledge": "",
+        "present_self": "",
+        "future_self": "",
         "system_prompt": "",
         "selected_generation_prompt_path": None,
         "selected_filter_prompt_path": str(EXT_PROMPT_ROOT / "input_filter" / "default.md"),
@@ -511,6 +513,9 @@ def ensure_demo_outputs_for_node(target_node):
 
     if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and not st.session_state.knowledge:
         st.session_state.knowledge = DEMO_KNOWLEDGE
+        knowledge_parts = split_knowledge_parts(DEMO_KNOWLEDGE)
+        st.session_state.present_self = knowledge_parts["present_self"]
+        st.session_state.future_self = knowledge_parts["future_self"]
         notices.append("데모 knowledge를 채웠습니다.")
 
     if NODE_ORDER[target_node] >= NODE_ORDER["edit_prompt"] and not st.session_state.filter_result:
@@ -664,6 +669,8 @@ def reset_user_outputs():
     않도록 한다.
     """
     st.session_state.knowledge = ""
+    st.session_state.present_self = ""
+    st.session_state.future_self = ""
     st.session_state.filter_result = None
     st.session_state.input_filter_state = None
     st.session_state.filter_letter_editor = ""
@@ -1014,14 +1021,17 @@ def run_filter(user_letter, knowledge):
 def run_knowledge(user_row):
     """선택 사용자 row를 기반으로 답장 생성용 knowledge를 생성한다.
 
-    `ext_knowledge_generate()`를 호출해 demographics, 선호/비선호, BFI, PVQ,
-    미래 프로필을 하나의 문자열로 구성하고 `st.session_state.knowledge`에
-    저장한다. OpenAI 인증 오류가 발생하면 사용자 친화 메시지로 중단한다.
+    현재 자아와 미래 자아 knowledge를 분리해 생성하고, 기존 화면/호출 흐름을
+    위해 통합 knowledge 문자열도 함께 저장한다. OpenAI 인증 오류가 발생하면
+    사용자 친화 메시지로 중단한다.
     """
     with st.spinner("지식을 구조화하는 중..."):
         try:
             clear_llm_call_log()
-            st.session_state.knowledge = ext_knowledge_generate(user_row)
+            knowledge_parts = ext_knowledge_parts_generate(user_row)
+            st.session_state.present_self = knowledge_parts["present_self"]
+            st.session_state.future_self = knowledge_parts["future_self"]
+            st.session_state.knowledge = combine_knowledge_parts(knowledge_parts)
             st.session_state.filter_knowledge_editor = st.session_state.knowledge
             st.session_state["_loaded_filter_knowledge_base_text"] = st.session_state.knowledge
             st.session_state.last_llm_io = get_llm_call_log()
@@ -1096,13 +1106,18 @@ def run_improvement_prompt():
     if not previous_letter or not st.session_state.screening_result:
         st.warning("개선 답장을 만들기 전에 먼저 답장 스크리닝을 실행하세요.")
         st.stop()
+    if not st.session_state.present_self and not st.session_state.future_self:
+        knowledge_parts = split_knowledge_parts(st.session_state.knowledge)
+        st.session_state.present_self = knowledge_parts["present_self"]
+        st.session_state.future_self = knowledge_parts["future_self"]
     with st.spinner("스크리닝 피드백을 반영해 답장을 개선하는 중..."):
         try:
             clear_llm_call_log()
             st.session_state.improved_reply = dd_generate_improvement_prompt_gpt4(
                 improvement_system_prompt,
                 st.session_state.user_name,
-                st.session_state.knowledge,
+                st.session_state.present_self,
+                st.session_state.future_self,
                 st.session_state.generation_letter_editor,
                 previous_letter,
                 st.session_state.screening_result,
@@ -1494,6 +1509,9 @@ elif st.session_state.node == "filter_letter":
     )
     if filter_knowledge != st.session_state.knowledge:
         st.session_state.knowledge = filter_knowledge
+        knowledge_parts = split_knowledge_parts(filter_knowledge)
+        st.session_state.present_self = knowledge_parts["present_self"]
+        st.session_state.future_self = knowledge_parts["future_self"]
         st.session_state.filter_result = None
         st.session_state.input_filter_state = None
     st.session_state.filter_knowledge_editor = filter_knowledge
