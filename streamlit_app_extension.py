@@ -1112,44 +1112,16 @@ def render_filter_result():
 
 
 def render_screening_result():
-    """출력 스크리닝 결과를 사람이 읽기 쉬운 형태와 JSON 원문으로 표시한다.
+    """출력 스크리닝 결과의 판정과 JSON 원문을 표시한다.
 
-    `screening_result`가 없으면 렌더링하지 않는다. 판정, 요약, 주요 dimension,
-    수정 제안, 글자 수를 순서대로 표시하고, 전체 JSON은 expander 안에 넣어
-    디버깅과 프롬프트 개선에 활용할 수 있게 한다.
+    `screening_result`가 없으면 렌더링하지 않는다. 화면에는 판정과 글자 수만
+    간결하게 보여주고, 상세 결과는 JSON expander 안에 넣는다.
     """
     result = st.session_state.screening_result
     if not result:
         return
     if result.get("status"):
         st.info(f"판정: {result['status']}")
-    if result.get("summary"):
-        st.write(result["summary"])
-    dimensions = result.get("dimensions")
-    if isinstance(dimensions, dict):
-        for dimension_name, dimension_result in dimensions.items():
-            if not isinstance(dimension_result, dict):
-                continue
-            if "passed" in dimension_result:
-                status = "pass" if dimension_result.get("passed") else "fail"
-            else:
-                status = dimension_result.get("status", "-")
-            note = dimension_result.get("note") or dimension_result.get("feedback", "")
-            evidence = dimension_result.get("evidence")
-            st.write(f"**{dimension_name}**: {status}")
-            if evidence and evidence != "none":
-                st.caption(f"Evidence: {evidence}")
-            if note:
-                st.caption(note)
-    elif result.get("quality_notes"):
-        st.write(result["quality_notes"])
-    if result.get("suggested_revision"):
-        st.write(result["suggested_revision"])
-    improvement_points = result.get("improvement_points")
-    if isinstance(improvement_points, list) and improvement_points:
-        st.write("**개선 포인트**")
-        for point in improvement_points:
-            st.write(f"- {point}")
     if result.get("char_count") is not None:
         st.caption(f"글자 수: {result['char_count']}자")
     with st.expander("Output filter JSON"):
