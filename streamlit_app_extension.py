@@ -63,20 +63,31 @@ NODE_ORDER = {node_id: index for index, (node_id, _) in enumerate(NODES)}
 
 DEMO_FILTER_RESULT = {
     "status": "통과",
-    "risk_level": "낮음",
     "reason": "데모 모드: 바로 노드 테스트를 할 수 있도록 통과 결과를 임시로 채웠습니다.",
     "recommended_action": "필요하면 필터링 실행 버튼으로 실제 평가를 다시 실행하세요.",
-    "letter_risk": {
+    "letter_screening": {
         "status": "통과",
-        "detected": False,
-        "risk_level": "낮음",
+        "passed": True,
+        "checks": {
+            "suicide_self_harm": True,
+            "severe_mental_health_crisis": True,
+            "harm_to_others": True,
+            "substance_abuse_crisis": True,
+            "acute_trauma_or_ongoing_crisis": True,
+        },
         "evidence": [],
         "reason": "데모 결과입니다.",
     },
-    "knowledge_risk": {
+    "profile_screening": {
         "status": "통과",
-        "detected": False,
-        "risk_level": "낮음",
+        "passed": True,
+        "checks": {
+            "suicide_self_harm": True,
+            "severe_mental_health_crisis": True,
+            "harm_to_others": True,
+            "substance_abuse_crisis": True,
+            "acute_trauma_or_ongoing_crisis": True,
+        },
         "evidence": [],
         "reason": "데모 결과입니다.",
     },
@@ -903,8 +914,8 @@ def render_node_nav(extension_df):
     with status_cols[1]:
         render_status_pill("지식 생성", bool(st.session_state.knowledge))
     with status_cols[2]:
-        filter_ok = bool(st.session_state.filter_result)
-        render_status_pill("필터 완료", filter_ok)
+        filter_ok = st.session_state.input_filter_state == "passed"
+        render_status_pill("필터 통과", filter_ok)
     with status_cols[3]:
         render_status_pill("답장 생성", bool(st.session_state.generated_reply))
     with status_cols[4]:
@@ -925,6 +936,15 @@ def sync_node_from_query_params(extension_df):
     if isinstance(node_from_url, list):
         node_from_url = node_from_url[0] if node_from_url else None
     if node_from_url in NODE_ORDER and node_from_url != st.session_state.get("_synced_query_node"):
+        if (
+            NODE_ORDER[node_from_url] >= NODE_ORDER["edit_prompt"]
+            and st.session_state.filter_result
+            and st.session_state.input_filter_state == "blocked"
+        ):
+            st.session_state.default_notice = "입력 필터가 차단 상태라 다음 단계로 이동할 수 없습니다."
+            st.session_state.node = "filter_letter"
+            st.session_state["_synced_query_node"] = node_from_url
+            return
         ensure_defaults_for_node(node_from_url, extension_df)
         st.session_state.node = node_from_url
         st.session_state["_synced_query_node"] = node_from_url
@@ -1030,29 +1050,24 @@ def render_improvement_prompt_selector():
     )
 
 
+def source_screening_failed(screening):
+    """source screening의 5개 check 중 하나라도 false이면 실패로 본다."""
+    if not isinstance(screening, dict):
+        return False
+    checks = screening.get("checks")
+    failed_check = isinstance(checks, dict) and any(value is False for value in checks.values())
+    return screening.get("status") == "차단" or screening.get("passed") is False or failed_check
+
+
 def input_filter_should_block(result):
-    """편지 또는 knowledge/profile 중 하나라도 위험 판정이면 차단한다."""
+    """편지 또는 knowledge/profile 중 하나라도 safety check 실패이면 차단한다."""
     if not isinstance(result, dict):
         return False
 
-    letter_risk = result.get("letter_risk")
-    knowledge_risk = result.get("knowledge_risk")
-    letter_blocked = False
-    knowledge_blocked = False
+    letter_blocked = source_screening_failed(result.get("letter_screening"))
+    profile_blocked = source_screening_failed(result.get("profile_screening"))
 
-    if isinstance(letter_risk, dict):
-        letter_blocked = (
-            letter_risk.get("status") == "차단"
-            or letter_risk.get("detected") is True
-        )
-
-    if isinstance(knowledge_risk, dict):
-        knowledge_blocked = (
-            knowledge_risk.get("status") == "차단"
-            or knowledge_risk.get("detected") is True
-        )
-
-    return result.get("status") == "차단" or letter_blocked or knowledge_blocked
+    return result.get("status") == "차단" or letter_blocked or profile_blocked
 
 
 def run_filter(user_letter, knowledge):
@@ -1229,37 +1244,38 @@ def render_filter_result():
         return
     status = result.get("effective_status") or result.get("status", "")
     if status == "차단":
-        st.error(f"필터 결과: {status} / 위험도: {result.get('risk_level', '-')}")
+        st.error(f"필터 결과: {status}")
     else:
-        st.success(f"필터 결과: {status} / 위험도: {result.get('risk_level', '-')}")
-    letter_risk = result.get("letter_risk")
-    if isinstance(letter_risk, dict):
-        letter_detected = (
-            letter_risk.get("status") == "차단"
-            or letter_risk.get("detected") is True
-        )
-        letter_status = "차단" if letter_detected else letter_risk.get("status", "통과")
-        st.write(
-            f"**Letter risk**: {letter_status} / "
-            f"{letter_risk.get('risk_level', '-')}"
-        )
-        evidence = letter_risk.get("evidence", [])
+        st.success(f"필터 결과: {status}")
+    letter_screening = result.get("letter_screening")
+    if isinstance(letter_screening, dict):
+        letter_failed = source_screening_failed(letter_screening)
+        letter_status = "차단" if letter_failed else letter_screening.get("status", "통과")
+        st.write(f"**Letter screening**: {letter_status}")
+        failed_checks = [
+            name for name, passed in letter_screening.get("checks", {}).items() if passed is False
+        ]
+        if failed_checks:
+            st.caption("Letter failed checks: " + ", ".join(failed_checks))
+        evidence = letter_screening.get("evidence", [])
         if evidence:
             st.caption("Letter evidence: " + " / ".join(map(str, evidence)))
-    knowledge_risk = result.get("knowledge_risk")
-    if isinstance(knowledge_risk, dict):
-        knowledge_detected = (
-            knowledge_risk.get("status") == "차단"
-            or knowledge_risk.get("detected") is True
-        )
-        knowledge_level = knowledge_risk.get("risk_level", "-")
-        if knowledge_detected:
-            st.warning(f"Knowledge risk: 감지됨 / {knowledge_level}")
-            evidence = knowledge_risk.get("evidence", [])
+    profile_screening = result.get("profile_screening")
+    if isinstance(profile_screening, dict):
+        profile_failed = source_screening_failed(profile_screening)
+        profile_status = "차단" if profile_failed else profile_screening.get("status", "통과")
+        if profile_failed:
+            st.warning(f"Profile screening: {profile_status}")
+            failed_checks = [
+                name for name, passed in profile_screening.get("checks", {}).items() if passed is False
+            ]
+            if failed_checks:
+                st.caption("Profile failed checks: " + ", ".join(failed_checks))
+            evidence = profile_screening.get("evidence", [])
             if evidence:
-                st.caption("Knowledge evidence: " + " / ".join(map(str, evidence)))
+                st.caption("Profile evidence: " + " / ".join(map(str, evidence)))
         else:
-            st.info(f"Knowledge risk: 없음 / {knowledge_level}")
+            st.info(f"Profile screening: {profile_status}")
     st.json(result)
 
 
@@ -1624,7 +1640,7 @@ elif st.session_state.node == "filter_letter":
         st.rerun()
     render_filter_result()
     render_last_llm_io()
-    if st.session_state.filter_result and st.button("시스템 프롬프트로 이동", type="primary"):
+    if st.session_state.input_filter_state == "passed" and st.button("시스템 프롬프트로 이동", type="primary"):
         st.session_state.node = "edit_prompt"
         st.rerun()
 
