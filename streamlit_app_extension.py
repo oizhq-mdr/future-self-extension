@@ -13,7 +13,6 @@ from gpt_structure import (
     dd_generate_gpt4_basic,
     dd_generate_improvement_prompt_gpt4,
     get_llm_call_log,
-    summarize_screening_feedback,
 )
 
 
@@ -379,6 +378,39 @@ def render_last_llm_io(title="실제 LLM I/O"):
                         )
 
 
+def summarize_screening_feedback_for_display(screening_feedback):
+    """output screening JSON에서 개선에 필요한 항목만 간결한 텍스트로 뽑는다."""
+    if not isinstance(screening_feedback, dict):
+        return str(screening_feedback or "")
+
+    lines = []
+    improvement_points = screening_feedback.get("improvement_points")
+    if isinstance(improvement_points, list):
+        for point in improvement_points:
+            if point and str(point).lower() != "none":
+                lines.append(f"- {point}")
+
+    dimensions = screening_feedback.get("dimensions")
+    if isinstance(dimensions, dict):
+        for dimension_name, dimension_result in dimensions.items():
+            if not isinstance(dimension_result, dict):
+                continue
+            if dimension_result.get("passed") is not False:
+                continue
+            feedback = dimension_result.get("feedback")
+            evidence = dimension_result.get("evidence")
+            if feedback and str(feedback).lower() != "none":
+                lines.append(f"- {dimension_name}: {feedback}")
+            elif evidence and str(evidence).lower() != "none":
+                lines.append(f"- {dimension_name}: {evidence}")
+
+    if lines:
+        return "\n".join(dict.fromkeys(lines))
+
+    summary = screening_feedback.get("summary")
+    return str(summary or "none")
+
+
 def render_global_variable_panel(user_letter_to_agent):
     """현재 LLM 입력 변수들을 모든 노드에서 확인할 수 있게 표시한다."""
     present_self = st.session_state.get("present_self", "")
@@ -417,7 +449,7 @@ def render_global_variable_panel(user_letter_to_agent):
     )
     screening_feedback = st.session_state.get("screening_result")
     if screening_feedback:
-        screening_feedback_text = summarize_screening_feedback(screening_feedback)
+        screening_feedback_text = summarize_screening_feedback_for_display(screening_feedback)
     else:
         screening_feedback_text = ""
 
