@@ -20,7 +20,7 @@ Adopt the conversational style and tone based on [User Letter]. You don't always
 - Use natural letter-writing phrases like: "네가 쓴 [구체적 일상/목표]를 읽으면서..." or similar expressions from their letter
 - Reflect their current daily life and dreams using **different words** to show you've truly listened and understood
 
-## Step 2 (Envisioning Life at Twenty)
+## Step 2 (Envisioning Life in Three Years)
 - Describe your concrete and realistic daily life three years later, maintaining a sense of possibility and openness (avoid specific proper nouns that define the future, e.g., university names)
 - Show how the interests and values they mentioned have naturally integrated into your daily life
 - Reference how your understanding of 'being myself' has evolved over the course of the following three years—moving beyond simple agreement to a more developed, lived perspective
