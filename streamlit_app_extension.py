@@ -488,7 +488,7 @@ def render_global_variable_panel(user_letter_to_agent):
         future_self = knowledge_parts["future_self"]
 
     letter = current_user_letter_for_context(user_letter_to_agent)
-    previous_system_reply = (
+    system_reply = (
         st.session_state.get("improved_reply")
         or st.session_state.get("screened_reply")
         or st.session_state.get("generated_reply", "")
@@ -508,7 +508,7 @@ def render_global_variable_panel(user_letter_to_agent):
         ("PVQ", pvq),
         ("FUTURE_SELF", future_self),
         ("USER_LETTER", letter),
-        ("PREVIOUS_SYSTEM_REPLY", previous_system_reply),
+        ("SYSTEM_REPLY", system_reply),
         ("SCREENING_FEEDBACK", screening_feedback_text),
     ]
 
