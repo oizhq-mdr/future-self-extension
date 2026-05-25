@@ -1423,6 +1423,7 @@ elif st.session_state.node == "structure_knowledge":
         run_knowledge(user_row)
         st.rerun()
     if st.session_state.knowledge:
+        st.markdown("### 구조화된 지식 설명문")
         st.write(st.session_state.knowledge)
         render_last_llm_io()
         if st.button("편지 필터링으로 이동"):
