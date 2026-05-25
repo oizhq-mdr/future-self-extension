@@ -1,8 +1,8 @@
-# FutureSelf Extension Node QA
+# FutureSelf Extension QA
 
 FutureSelf Extension은 사용자의 편지와 설문 데이터를 바탕으로 미래 자아 답장을 생성하고, 그 과정을 노드 단위로 점검하기 위한 Streamlit 앱입니다.
 
-이 앱은 하나의 end-to-end 파이프라인을 여러 QA 노드로 나누어 확인합니다. 지식 구조화, 입력 편지와 knowledge 기반 필터링, 답장 생성 프롬프트 편집, 답장 생성, 출력 스크리닝, 개선 프롬프트 생성까지 한 화면에서 순서대로 테스트할 수 있습니다.
+이 앱은 하나의 end-to-end 파이프라인을 여러 단계로 나누어 확인합니다. 지식 구조화, 입력 편지와 knowledge 기반 필터링, 답장 생성 프롬프트 편집, 답장 생성, 출력 스크리닝, 개선 프롬프트 생성까지 한 화면에서 순서대로 테스트할 수 있습니다.
 
 ## 주요 기능
 
@@ -67,7 +67,7 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 streamlit run streamlit_app_extension.py
 ```
 
-앱이 열리면 상단 Node Graph에서 각 노드를 클릭해 바로 이동할 수 있습니다. 중간 노드로 바로 진입하면 데모 데이터가 필요한 상태값을 임시로 채워 빠르게 노드별 QA를 할 수 있습니다.
+앱이 열리면 상단 QA Graph에서 각 단계를 클릭해 바로 이동할 수 있습니다. 중간 단계로 바로 진입하면 데모 데이터가 필요한 상태값을 임시로 채워 빠르게 단계별 QA를 할 수 있습니다.
 
 ## Streamlit Community Cloud 배포
 
