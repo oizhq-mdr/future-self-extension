@@ -1149,6 +1149,49 @@ def input_filter_should_block(result):
     return result.get("status") == "차단" or letter_blocked or profile_blocked
 
 
+def current_knowledge_parts():
+    """현재 session_state의 분리된 knowledge parts를 명시적으로 반환한다."""
+    if (
+        st.session_state.present_self
+        or st.session_state.love
+        or st.session_state.hate
+        or st.session_state.bfi
+        or st.session_state.pvq
+        or st.session_state.future_self
+    ):
+        return {
+            "present_self": st.session_state.present_self,
+            "love": st.session_state.love,
+            "hate": st.session_state.hate,
+            "bfi": st.session_state.bfi,
+            "pvq": st.session_state.pvq,
+            "future_self": st.session_state.future_self,
+        }
+
+    parts = split_knowledge_parts(st.session_state.knowledge)
+    st.session_state.present_self = parts["present_self"]
+    st.session_state.love = parts["love"]
+    st.session_state.hate = parts["hate"]
+    st.session_state.bfi = parts["bfi"]
+    st.session_state.pvq = parts["pvq"]
+    st.session_state.future_self = parts["future_self"]
+    return parts
+
+
+def set_last_llm_io_or_stop(expected_stages):
+    """마지막 작업의 LLM 호출 stage가 예상과 정확히 일치하는지 검증한다."""
+    llm_logs = get_llm_call_log()
+    actual_stages = [log.get("stage") for log in llm_logs]
+    if actual_stages != expected_stages:
+        st.error(
+            "LLM 호출 수가 예상과 다릅니다. "
+            f"예상: {', '.join(expected_stages)} / 실제: {', '.join(actual_stages)}"
+        )
+        st.session_state.last_llm_io = llm_logs
+        st.stop()
+    st.session_state.last_llm_io = llm_logs
+
+
 def run_filter(user_letter, knowledge):
     """현재 선택된 input filter 프롬프트로 사용자 편지와 knowledge를 함께 스크리닝한다.
 
@@ -1164,13 +1207,25 @@ def run_filter(user_letter, knowledge):
     with st.spinner("사용자 편지의 고위험 내용을 필터링 중..."):
         try:
             clear_llm_call_log()
-            result = dd_filter_user_letter_gpt4(filter_prompt, user_letter, knowledge)
+            knowledge_parts = current_knowledge_parts()
+            result = dd_filter_user_letter_gpt4(
+                filter_prompt,
+                user_letter,
+                knowledge,
+                participant_name=st.session_state.user_name,
+                present_self=knowledge_parts["present_self"],
+                love=knowledge_parts["love"],
+                hate=knowledge_parts["hate"],
+                bfi=knowledge_parts["bfi"],
+                pvq=knowledge_parts["pvq"],
+                future_self=knowledge_parts["future_self"],
+            )
         except openai.AuthenticationError:
             show_openai_auth_error()
         blocked = input_filter_should_block(result)
         result["effective_status"] = "차단" if blocked else "통과"
         st.session_state.filter_result = result
-        st.session_state.last_llm_io = get_llm_call_log()
+        set_last_llm_io_or_stop(["Input screening"])
         st.session_state.input_filter_state = "blocked" if blocked else "passed"
 
 
@@ -1206,17 +1261,7 @@ def run_knowledge(user_row):
             st.session_state.knowledge = combine_knowledge_parts(knowledge_parts)
             st.session_state.filter_knowledge_editor = st.session_state.knowledge
             st.session_state["_loaded_filter_knowledge_base_text"] = st.session_state.knowledge
-            llm_logs = get_llm_call_log()
-            expected_stages = ["BFI 요약", "PVQ 요약"]
-            actual_stages = [log.get("stage") for log in llm_logs]
-            if actual_stages != expected_stages:
-                st.error(
-                    "지식 구조화 LLM 호출 수가 예상과 다릅니다. "
-                    f"예상: {', '.join(expected_stages)} / 실제: {', '.join(actual_stages)}"
-                )
-                st.session_state.last_llm_io = llm_logs
-                st.stop()
-            st.session_state.last_llm_io = llm_logs
+            set_last_llm_io_or_stop(["BFI 요약", "PVQ 요약"])
         except openai.AuthenticationError:
             show_openai_auth_error()
 
@@ -1246,18 +1291,19 @@ def run_generation(user_letter):
     with st.spinner("답장 1개를 생성하는 중..."):
         try:
             clear_llm_call_log()
+            knowledge_parts = current_knowledge_parts()
             st.session_state.generated_reply = dd_generate_gpt4_basic(
                 generation_prompt_with_improvement(),
-                st.session_state.present_self,
+                knowledge_parts["present_self"],
                 user_letter,
                 participant_name=st.session_state.user_name,
-                love=st.session_state.love,
-                hate=st.session_state.hate,
-                bfi=st.session_state.bfi,
-                pvq=st.session_state.pvq,
-                future_self=st.session_state.future_self,
+                love=knowledge_parts["love"],
+                hate=knowledge_parts["hate"],
+                bfi=knowledge_parts["bfi"],
+                pvq=knowledge_parts["pvq"],
+                future_self=knowledge_parts["future_self"],
             )
-            st.session_state.last_llm_io = get_llm_call_log()
+            set_last_llm_io_or_stop(["답장 생성"])
         except openai.AuthenticationError:
             show_openai_auth_error()
 
@@ -1299,16 +1345,24 @@ def run_screening(reply, original_letter=""):
     with st.spinner("생성된 답장을 스크리닝 중..."):
         try:
             clear_llm_call_log()
+            knowledge_parts = current_knowledge_parts()
             result = dd_evaluate_letter_with_prompt_gpt4(
                 reply,
                 screening_prompt,
                 original_letter=current_user_letter_for_context(original_letter),
                 knowledge=st.session_state.knowledge,
+                participant_name=st.session_state.user_name,
+                present_self=knowledge_parts["present_self"],
+                love=knowledge_parts["love"],
+                hate=knowledge_parts["hate"],
+                bfi=knowledge_parts["bfi"],
+                pvq=knowledge_parts["pvq"],
+                future_self=knowledge_parts["future_self"],
             )
         except openai.AuthenticationError:
             show_openai_auth_error()
         st.session_state.screened_reply = reply
-        st.session_state.last_llm_io = get_llm_call_log()
+        set_last_llm_io_or_stop(["답장 스크리닝"])
         result["char_count"] = len(reply)
         st.session_state.screening_result = result
         st.session_state.output_filter_state = "done"
@@ -1321,33 +1375,19 @@ def run_improvement_prompt():
     if not system_reply or not st.session_state.screening_result:
         st.warning("개선 답장을 만들기 전에 먼저 답장 스크리닝을 실행하세요.")
         st.stop()
-    if (
-        not st.session_state.present_self
-        and not st.session_state.love
-        and not st.session_state.hate
-        and not st.session_state.bfi
-        and not st.session_state.pvq
-        and not st.session_state.future_self
-    ):
-        knowledge_parts = split_knowledge_parts(st.session_state.knowledge)
-        st.session_state.present_self = knowledge_parts["present_self"]
-        st.session_state.love = knowledge_parts["love"]
-        st.session_state.hate = knowledge_parts["hate"]
-        st.session_state.bfi = knowledge_parts["bfi"]
-        st.session_state.pvq = knowledge_parts["pvq"]
-        st.session_state.future_self = knowledge_parts["future_self"]
+    knowledge_parts = current_knowledge_parts()
     with st.spinner("스크리닝 피드백을 반영해 답장을 개선하는 중..."):
         try:
             clear_llm_call_log()
             st.session_state.improved_reply = dd_generate_improvement_prompt_gpt4(
                 improvement_system_prompt,
                 st.session_state.user_name,
-                st.session_state.present_self,
-                st.session_state.love,
-                st.session_state.hate,
-                st.session_state.bfi,
-                st.session_state.pvq,
-                st.session_state.future_self,
+                knowledge_parts["present_self"],
+                knowledge_parts["love"],
+                knowledge_parts["hate"],
+                knowledge_parts["bfi"],
+                knowledge_parts["pvq"],
+                knowledge_parts["future_self"],
                 current_user_letter_for_context(),
                 system_reply,
                 st.session_state.screening_result,
@@ -1355,7 +1395,7 @@ def run_improvement_prompt():
             st.session_state.generated_reply = st.session_state.improved_reply
             st.session_state.screened_reply = st.session_state.improved_reply
             st.session_state.screening_reply_editor = st.session_state.improved_reply
-            st.session_state.last_llm_io = get_llm_call_log()
+            set_last_llm_io_or_stop(["개선 답장 생성"])
         except openai.AuthenticationError:
             show_openai_auth_error()
 

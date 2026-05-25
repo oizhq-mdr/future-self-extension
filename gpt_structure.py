@@ -31,12 +31,48 @@ def record_llm_call(stage, messages, output, raw_output=None):
     )
 
 
-def build_filter_user_content(letter, knowledge):
+def build_filter_user_content(
+    letter,
+    knowledge,
+    participant_name=None,
+    present_self="",
+    love="",
+    hate="",
+    bfi="",
+    pvq="",
+    future_self="",
+):
     """입력 필터의 user role content를 구성한다.
 
-    사용자 knowledge와 사용자 편지를 명시적인 섹션으로 분리한다. 출력 형식은
-    input filter system prompt의 JSON schema 지시를 따른다.
+    분리된 profile 섹션이 있으면 답장 생성/개선 단계와 같은 입력 구조로
+    전달한다. 없으면 이전 호환을 위해 통합 knowledge 문자열을 사용한다.
+    출력 형식은 input filter system prompt의 JSON schema 지시를 따른다.
     """
+    if any([present_self, love, hate, bfi, pvq, future_self]):
+        return f"""[PARTICIPANT_NAME]
+{participant_name or ""}
+
+[PRESENT_SELF]
+{present_self}
+
+[LOVE]
+{love}
+
+[HATE]
+{hate}
+
+[BFI]
+{bfi}
+
+[PVQ]
+{pvq}
+
+[FUTURE_SELF]
+{future_self}
+
+[USER_LETTER]
+{letter}"""
+
     return f"""[사용자 Knowledge]
 {knowledge}
 
@@ -220,7 +256,18 @@ def dd_safeguard_gpt4(safeguard_prompt, replies_text):
     record_llm_call("Safeguard", messages, output)
     return output
 
-def dd_filter_user_letter_gpt4(filter_prompt, letter, knowledge):
+def dd_filter_user_letter_gpt4(
+    filter_prompt,
+    letter,
+    knowledge,
+    participant_name=None,
+    present_self="",
+    love="",
+    hate="",
+    bfi="",
+    pvq="",
+    future_self="",
+):
     """사용자 편지와 knowledge를 입력 필터 프롬프트로 검사하고 JSON 결과를 반환한다.
 
     `filter_prompt`는 input_filter Markdown 파일의 내용이고, `letter`는
@@ -228,7 +275,17 @@ def dd_filter_user_letter_gpt4(filter_prompt, letter, knowledge):
     구조화한 배경 정보이다. JSON mode를 사용하므로 user 메시지에 JSON 객체
     반환 지시를 함께 넣고, 모델 응답을 `dict`로 파싱해 반환한다.
     """
-    user_content = build_filter_user_content(letter, knowledge)
+    user_content = build_filter_user_content(
+        letter,
+        knowledge,
+        participant_name=participant_name,
+        present_self=present_self,
+        love=love,
+        hate=hate,
+        bfi=bfi,
+        pvq=pvq,
+        future_self=future_self,
+    )
 
     messages = [
         {'role': 'system', 'content': filter_prompt},
@@ -244,7 +301,19 @@ def dd_filter_user_letter_gpt4(filter_prompt, letter, knowledge):
     record_llm_call("Input screening", messages, output, raw_output)
     return output
 
-def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt, original_letter=None, knowledge=None):
+def dd_evaluate_letter_with_prompt_gpt4(
+    letter,
+    screening_prompt,
+    original_letter=None,
+    knowledge=None,
+    participant_name=None,
+    present_self="",
+    love="",
+    hate="",
+    bfi="",
+    pvq="",
+    future_self="",
+):
     """생성된 답장을 output filter 프롬프트로 평가하고 JSON 결과를 반환한다.
 
     `letter`는 검수할 생성 답장이고, `screening_prompt`는 output_filter
@@ -254,7 +323,28 @@ def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt, original_lette
     스크리닝 결과로 사용한다.
     """
     context_sections = []
-    if knowledge:
+    if any([present_self, love, hate, bfi, pvq, future_self]):
+        context_sections.append(f"""[PARTICIPANT_NAME]
+{participant_name or ""}
+
+[PRESENT_SELF]
+{present_self}
+
+[LOVE]
+{love}
+
+[HATE]
+{hate}
+
+[BFI]
+{bfi}
+
+[PVQ]
+{pvq}
+
+[FUTURE_SELF]
+{future_self}""")
+    elif knowledge:
         context_sections.append(f"""[Background Knowledge]
 {knowledge}""")
     if original_letter:
