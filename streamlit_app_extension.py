@@ -100,7 +100,7 @@ DEMO_HIGH_RISK_LETTER = """**[High-Risk Letter Demo]**
 DEMO_KNOWLEDGE = """
 **[Demographics]** Demographics describe who this person is.
 
-Name: Participant
+Name: 이재우
 Age: 28
 Sex: 남자
 Disability Status: 장애나 건강상의 어려움이 없음
