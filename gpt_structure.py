@@ -254,12 +254,12 @@ def dd_evaluate_letter_with_prompt_gpt4(letter, screening_prompt, original_lette
     스크리닝 결과로 사용한다.
     """
     context_sections = []
-    if original_letter:
-        context_sections.append(f"""[Participant's Original Letter]
-{original_letter}""")
     if knowledge:
         context_sections.append(f"""[Background Knowledge]
 {knowledge}""")
+    if original_letter:
+        context_sections.append(f"""[Participant's Original Letter]
+{original_letter}""")
     context_sections.append(f"""[Generated Future-Self Reply]
 {letter}
 
