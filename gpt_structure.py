@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 MODEL = "gpt-5.4-mini-2026-03-17"
-SCREENING_MODEL = "gpt-5.4-mini-2026-03-17"
+SCREENING_MODEL = "gpt-5.4-nano-2026-03-17"
 PROMPT_ROOT = Path(__file__).resolve().parent / "data" / "prompt_template"
 LLM_CALL_LOGS = []
 LLM_CALL_LOGS_CONTEXT = ContextVar("LLM_CALL_LOGS_CONTEXT", default=None)
