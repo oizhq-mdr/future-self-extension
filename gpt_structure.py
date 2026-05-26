@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 MODEL = "gpt-5"
+SCREENING_MODEL = "gpt-5.4-mini-2026-03-17"
 PROMPT_ROOT = Path(__file__).resolve().parent / "data" / "prompt_template"
 LLM_CALL_LOGS = []
 LLM_CALL_LOGS_CONTEXT = ContextVar("LLM_CALL_LOGS_CONTEXT", default=None)
@@ -24,10 +25,10 @@ def get_llm_call_log():
     return list(LLM_CALL_LOGS)
 
 
-def record_llm_call(stage, messages, output, raw_output=None):
+def record_llm_call(stage, messages, output, raw_output=None, model=MODEL):
     log_entry = {
         "stage": stage,
-        "model": MODEL,
+        "model": model,
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "messages": messages,
         "output": output,
@@ -301,13 +302,13 @@ def dd_filter_user_letter_gpt4(
         {'role': 'user', 'content': user_content}
     ]
     completion = openai.chat.completions.create(
-        model=MODEL,
+        model=SCREENING_MODEL,
         messages=messages,
         response_format={ "type": "json_object" }
     )
     raw_output = completion.choices[0].message.content
     output = json.loads(raw_output)
-    record_llm_call("Input screening", messages, output, raw_output)
+    record_llm_call("Input screening", messages, output, raw_output, model=SCREENING_MODEL)
     return output
 
 def dd_evaluate_letter_with_prompt_gpt4(
@@ -370,13 +371,13 @@ def dd_evaluate_letter_with_prompt_gpt4(
         {'role': 'user', 'content': user_content}
     ]
     completion = openai.chat.completions.create(
-        model=MODEL,
+        model=SCREENING_MODEL,
         messages=messages,
         response_format={ "type": "json_object" }
     )
     raw_output = completion.choices[0].message.content
     output = json.loads(raw_output)
-    record_llm_call("답장 스크리닝", messages, output, raw_output)
+    record_llm_call("답장 스크리닝", messages, output, raw_output, model=SCREENING_MODEL)
     return output
 
 def dd_generate_improvement_prompt_gpt4(
