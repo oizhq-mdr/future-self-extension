@@ -235,13 +235,13 @@ st.set_page_config(
 )
 
 
-@st.cache_data
+@st.cache_data(ttl=60)
 def load_data():
     """Google Sheets CSV에서 extension 실험 데이터를 읽어 DataFrame으로 반환한다.
 
-    Streamlit cache를 사용해 같은 세션에서 반복 로드 비용을 줄인다. 반환된
-    DataFrame은 사용자 선택, 편지 본문 추출, 지식 구조화의 원천 데이터로
-    사용된다.
+    Streamlit cache를 사용해 반복 로드 비용을 줄이되, Google Sheets 수정이
+    배포 앱에 오래 남지 않도록 60초마다 새로 읽는다. 반환된 DataFrame은
+    사용자 선택, 편지 본문 추출, 지식 구조화의 원천 데이터로 사용된다.
     """
     return pd.read_csv(
         "https://docs.google.com/spreadsheets/d/1MN6NmPU_DjJR2zYZ5Ct_SwiOuuvGXkpXBjT9DJYRYyQ/export?format=csv"
@@ -1757,6 +1757,11 @@ init_state()
 if st.session_state.node not in NODE_ORDER:
     st.session_state.node = "select_user"
 extension_df = load_data()
+if st.session_state.node == "select_user" and st.session_state.user_name:
+    sheet_users = set(extension_df.iloc[:, 0].dropna().unique())
+    if st.session_state.user_name not in sheet_users:
+        reset_user_outputs()
+        st.session_state.user_name = None
 ensure_default_prompts()
 sync_node_from_query_params(extension_df)
 if st.session_state.node != "select_user":
@@ -1771,6 +1776,9 @@ st.markdown("---")
 
 if st.session_state.node == "select_user":
     st.subheader("1. 사용자 선택")
+    if st.button("Google Sheets 데이터 새로고침"):
+        load_data.clear()
+        st.rerun()
     with st.form("user_select"):
         user_name = st.radio(
             "Select User Name",
