@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 from pathlib import Path
 
@@ -212,27 +213,40 @@ DEMO_BAD_REPLY = """
 """
 
 DEMO_SCREENING_RESULT = {
-    "status": "false",
+    "status": "improve",
     "summary": "데모 결과입니다. 실제 검수는 output filter 실행 버튼으로 다시 실행하세요.",
     "dimensions": {
-        "future_self_perspective": {
-            "status": "pass",
-            "note": "미래 자아 관점은 자연스럽게 유지됩니다.",
+        "knowledge_consistency": {
+            "passed": True,
+            "evidence": "none",
+            "feedback": "none",
         },
-        "personal_relevance": {
-            "status": "revise",
-            "note": "원본 편지의 구체적 고민과 질문을 조금 더 직접 반영하면 좋습니다.",
+        "tone_and_direction_adherence": {
+            "passed": True,
+            "evidence": "none",
+            "feedback": "none",
         },
-        "tone_and_naturalness": {
-            "status": "pass",
-            "note": "편지 흐름은 대체로 자연스럽습니다.",
+        "letter_quality": {
+            "passed": False,
+            "evidence": "none",
+            "feedback": "원본 편지의 구체적 고민과 질문을 조금 더 직접 반영하세요.",
         },
-        "safety_and_appropriateness": {
-            "status": "pass",
-            "note": "명백한 안전상 문제는 보이지 않습니다.",
+        "participant_safety": {
+            "passed": True,
+            "evidence": "none",
+            "feedback": "none",
+        },
+        "korean_linguistic_quality": {
+            "passed": True,
+            "evidence": "none",
+            "feedback": "none",
+        },
+        "format_compliance": {
+            "passed": True,
+            "evidence": "none",
+            "feedback": "none",
         },
     },
-    "suggested_revision": "문체의 결을 더 가깝게 맞추고, 미래의 하루를 한두 장면으로 구체화하세요.",
 }
 
 DEMO_IMPROVEMENT_PROMPT = """- 원본 편지에서 드러난 표현 습관과 감정의 결을 더 가까이 따라가세요.
@@ -441,36 +455,23 @@ def render_last_llm_io(title="실제 LLM I/O"):
 
 
 def summarize_screening_feedback_for_display(screening_feedback):
-    """output screening JSON에서 개선에 필요한 항목만 간결한 텍스트로 뽑는다."""
+    """output screening JSON에서 실패 dimension의 feedback만 JSON list로 뽑는다."""
     if not isinstance(screening_feedback, dict):
-        return str(screening_feedback or "")
+        return "[]"
 
-    lines = []
-    improvement_points = screening_feedback.get("improvement_points")
-    if isinstance(improvement_points, list):
-        for point in improvement_points:
-            if point and str(point).lower() != "none":
-                lines.append(f"- {point}")
-
+    feedback_items = []
     dimensions = screening_feedback.get("dimensions")
     if isinstance(dimensions, dict):
-        for dimension_name, dimension_result in dimensions.items():
+        for dimension_result in dimensions.values():
             if not isinstance(dimension_result, dict):
                 continue
             if dimension_result.get("passed") is not False:
                 continue
             feedback = dimension_result.get("feedback")
-            evidence = dimension_result.get("evidence")
             if feedback and str(feedback).lower() != "none":
-                lines.append(f"- {dimension_name}: {feedback}")
-            elif evidence and str(evidence).lower() != "none":
-                lines.append(f"- {dimension_name}: {evidence}")
+                feedback_items.append(str(feedback))
 
-    if lines:
-        return "\n".join(dict.fromkeys(lines))
-
-    summary = screening_feedback.get("summary")
-    return str(summary or "none")
+    return json.dumps(list(dict.fromkeys(feedback_items)), ensure_ascii=False)
 
 
 def render_global_variable_panel(user_letter_to_agent):

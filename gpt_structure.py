@@ -409,33 +409,20 @@ def dd_generate_improvement_prompt_gpt4(
 
 
 def summarize_screening_feedback(screening_feedback):
-    """output screening JSON에서 개선에 필요한 항목만 간결한 텍스트로 뽑는다."""
+    """output screening JSON에서 실패 dimension의 feedback만 JSON list로 뽑는다."""
     if not isinstance(screening_feedback, dict):
-        return str(screening_feedback or "")
+        return "[]"
 
-    lines = []
-    improvement_points = screening_feedback.get("improvement_points")
-    if isinstance(improvement_points, list):
-        for point in improvement_points:
-            if point and str(point).lower() != "none":
-                lines.append(f"- {point}")
-
+    feedback_items = []
     dimensions = screening_feedback.get("dimensions")
     if isinstance(dimensions, dict):
-        for dimension_name, dimension_result in dimensions.items():
+        for dimension_result in dimensions.values():
             if not isinstance(dimension_result, dict):
                 continue
             if dimension_result.get("passed") is not False:
                 continue
             feedback = dimension_result.get("feedback")
-            evidence = dimension_result.get("evidence")
             if feedback and str(feedback).lower() != "none":
-                lines.append(f"- {dimension_name}: {feedback}")
-            elif evidence and str(evidence).lower() != "none":
-                lines.append(f"- {dimension_name}: {evidence}")
+                feedback_items.append(str(feedback))
 
-    if lines:
-        return "\n".join(dict.fromkeys(lines))
-
-    summary = screening_feedback.get("summary")
-    return str(summary or "none")
+    return json.dumps(list(dict.fromkeys(feedback_items)), ensure_ascii=False)
