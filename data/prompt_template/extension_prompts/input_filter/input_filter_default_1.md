@@ -28,7 +28,7 @@ False negatives are far more costly than false positives in dimensions 1 and 2 (
 For each dimension below, decide whether a signal is detected, cite verbatim evidence, and explain briefly.
 
 ### 4.1. Suicide and Self-Harm Risk Signals
-**Detect (mark as true)**:
+**Detect (mark as false)**:
 - Direct or indirect statements of wanting to die, disappear, end one's life, or "not be here"
 - Statements of planning, considering, or having attempted suicide
 - Statements of current or past self-harm (cutting, burning, etc.) or intent to self-harm
@@ -41,7 +41,7 @@ For each dimension below, decide whether a signal is detected, cite verbatim evi
 - Emotional venting about hard times that does not imply ending life or self-harm
 
 ### 4.2. Severe Mental Health Crisis Signals
-**Detect (mark as true)**:
+**Detect (mark as false)**:
 - Expressions suggesting psychotic symptoms (hallucinations, persistent paranoid delusions, non-metaphorical beliefs of being controlled or harmed by others)
 - Severe dissociation or depersonalization that the participant describes as distressing and persistent
 - Profound and persistent hopelessness paired with loss of self ("내가 누군지도 모르겠고 아무 의미가 없어")
@@ -53,7 +53,7 @@ For each dimension below, decide whether a signal is detected, cite verbatim evi
 - Existential reflection appropriate to a future-self letter ("미래가 막막해", "방향을 잘 모르겠어")
 
 ### 4.3. Harm to Others Signals
-**Detect (mark as true)**:
+**Detect (mark as false)**:
 - Concrete intent to physically harm, attack, or kill another person or group
 - Planning violence toward a specific identified target
 - Threats described as concrete and imminent
@@ -64,7 +64,7 @@ For each dimension below, decide whether a signal is detected, cite verbatim evi
 - Hypothetical anger ("한 대 치고 싶을 만큼 화났어") as figurative expression
 
 ### 4.4. Substance Abuse Crisis Signals
-**Detect (mark as true)**:
+**Detect (mark as false)**:
 - Disclosure of current substance overdose, intoxication crisis, or seeking lethal doses
 - Substance use linked to self-harm intent ("술로 잠들면 안 깨어났으면")
 - Active addiction crisis described as out of control and dangerous
@@ -75,7 +75,7 @@ For each dimension below, decide whether a signal is detected, cite verbatim evi
 - General references to wanting to "drink it away"
 
 ### 4.5. Acute Trauma or Ongoing Crisis Signals
-**Detect (mark as true)**:
+**Detect (mark as false)**:
 - Disclosure of currently ongoing abuse, violence, or stalking
 - Recent severe traumatic event with acute distress where the participant signals they cannot cope
 - Active homelessness, food insecurity at crisis level, or other immediate safety threats explicitly disclosed
