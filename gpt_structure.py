@@ -15,7 +15,7 @@ LLM_CALL_LOGS_CONTEXT = ContextVar("LLM_CALL_LOGS_CONTEXT", default=None)
 
 def merge_present_self_sections(present_self="", love="", hate="", bfi="", pvq=""):
     """present_self가 이미 통합 문자열이면 그대로 쓰고, 아니면 하위 섹션을 합친다."""
-    present_self = present_self or ""
+    present_self = str(present_self or "")
     markers = [
         "**[Top 3 Things this person loves]**",
         "**[Big 5 Personality Traits in 2026]**",
@@ -23,7 +23,7 @@ def merge_present_self_sections(present_self="", love="", hate="", bfi="", pvq="
     ]
     if present_self and any(marker in present_self for marker in markers):
         return present_self
-    return "\n\n".join(part for part in [present_self, love, hate, bfi, pvq] if part)
+    return "\n\n".join(str(part) for part in [present_self, love, hate, bfi, pvq] if part)
 
 
 def clear_llm_call_log():
