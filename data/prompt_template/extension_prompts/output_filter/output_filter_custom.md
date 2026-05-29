@@ -8,7 +8,7 @@ Field rules:
 - `status`: exactly `"deliver"` or `"improve"`.
 - Every dimension object must include `passed` as a JSON boolean, `evidence` as a string, and `feedback` as a string.
 - For passed dimensions, use `"none"` for both `evidence` and `feedback`.
-- Do not include separate `failed_dimensions` or `improvement_points` fields. Failed dimensions are already represented by `passed: false`, and revision instructions belong only in each failed dimension's `feedback`.
+- Failed dimensions are already represented by `passed: false`, and revision instructions belong only in each failed dimension's `feedback`.
 - Do not include any top-level fields other than `status`, `summary`, and `dimensions`.
 
 Use this JSON shape:
