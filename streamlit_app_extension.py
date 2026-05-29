@@ -60,7 +60,7 @@ NODES = [
     ("improve_prompt", "6. 개선 프롬프트"),
 ]
 NODE_ORDER = {node_id: index for index, (node_id, _) in enumerate(NODES)}
-CONTEXT_SCHEMA_VERSION = "previous_system_reply_v1"
+CONTEXT_SCHEMA_VERSION = "nested_present_self_v1"
 DEMO_PARTICIPANT_NAME = "손흥민"
 
 DEMO_FILTER_RESULT = {
@@ -165,11 +165,13 @@ DEMO_FUTURE_SELF = """
 """
 
 DEMO_KNOWLEDGE_PARTS = {
-    "present_self": DEMO_PRESENT_SELF,
-    "love": DEMO_LOVE,
-    "hate": DEMO_HATE,
-    "bfi": DEMO_BFI,
-    "pvq": DEMO_PVQ,
+    "present_self": {
+        "profile": DEMO_PRESENT_SELF,
+        "love": DEMO_LOVE,
+        "hate": DEMO_HATE,
+        "bfi": DEMO_BFI,
+        "pvq": DEMO_PVQ,
+    },
     "future_self": DEMO_FUTURE_SELF,
 }
 DEMO_KNOWLEDGE = combine_knowledge_parts(DEMO_KNOWLEDGE_PARTS)
@@ -260,12 +262,9 @@ def init_state():
         "node": "select_user",
         "user_name": None,
         "knowledge": "",
-        "present_self": "",
-        "love": "",
-        "hate": "",
-        "bfi": "",
-        "pvq": "",
+        "present_self": {},
         "future_self": "",
+        "user_letter": "",
         "system_prompt": "",
         "_knowledge_running": False,
         "_filter_running": False,
@@ -465,28 +464,13 @@ def summarize_screening_feedback_for_display(screening_feedback):
 
 def render_global_variable_panel(user_letter_to_agent):
     """현재 LLM 입력 변수들을 모든 노드에서 확인할 수 있게 표시한다."""
-    present_self = st.session_state.get("present_self", "")
-    love = st.session_state.get("love", "")
-    hate = st.session_state.get("hate", "")
-    bfi = st.session_state.get("bfi", "")
-    pvq = st.session_state.get("pvq", "")
+    present_self = st.session_state.get("present_self", {})
     future_self = st.session_state.get("future_self", "")
-    if (
-        not present_self
-        and not love
-        and not hate
-        and not bfi
-        and not pvq
-        and not future_self
-        and st.session_state.get("knowledge")
-    ):
+    if not present_self and not future_self and st.session_state.get("knowledge"):
         knowledge_parts = split_knowledge_parts(st.session_state.knowledge)
         present_self = knowledge_parts["present_self"]
-        love = knowledge_parts["love"]
-        hate = knowledge_parts["hate"]
-        bfi = knowledge_parts["bfi"]
-        pvq = knowledge_parts["pvq"]
         future_self = knowledge_parts["future_self"]
+    present_self_text = present_self_to_text(present_self)
 
     letter = current_user_letter_for_context(user_letter_to_agent)
     system_reply = (
@@ -502,11 +486,7 @@ def render_global_variable_panel(user_letter_to_agent):
 
     variables = [
         ("PARTICIPANT_NAME", st.session_state.get("user_name") or ""),
-        ("PRESENT_SELF", present_self),
-        ("LOVE", love),
-        ("HATE", hate),
-        ("BFI", bfi),
-        ("PVQ", pvq),
+        ("PRESENT_SELF", present_self_text),
         ("FUTURE_SELF", future_self),
         ("USER_LETTER", letter),
         ("SYSTEM_REPLY", system_reply),
@@ -650,10 +630,6 @@ def ensure_demo_outputs_for_node(target_node, allow_demo_outputs=False):
         st.session_state.knowledge = DEMO_KNOWLEDGE
         st.session_state.original_user_letter = DEMO_USER_LETTER
         st.session_state.present_self = DEMO_KNOWLEDGE_PARTS["present_self"]
-        st.session_state.love = DEMO_KNOWLEDGE_PARTS["love"]
-        st.session_state.hate = DEMO_KNOWLEDGE_PARTS["hate"]
-        st.session_state.bfi = DEMO_KNOWLEDGE_PARTS["bfi"]
-        st.session_state.pvq = DEMO_KNOWLEDGE_PARTS["pvq"]
         st.session_state.future_self = DEMO_KNOWLEDGE_PARTS["future_self"]
         notices.append("데모 knowledge를 채웠습니다.")
 
@@ -822,11 +798,7 @@ def reset_user_outputs():
     않도록 한다.
     """
     st.session_state.knowledge = ""
-    st.session_state.present_self = ""
-    st.session_state.love = ""
-    st.session_state.hate = ""
-    st.session_state.bfi = ""
-    st.session_state.pvq = ""
+    st.session_state.present_self = {}
     st.session_state.future_self = ""
     st.session_state["_knowledge_running"] = False
     st.session_state["_filter_running"] = False
@@ -835,6 +807,7 @@ def reset_user_outputs():
     st.session_state.filter_result = None
     st.session_state.input_filter_state = None
     st.session_state.original_user_letter = ""
+    st.session_state.user_letter = ""
     st.session_state.filter_letter_editor = ""
     st.session_state.filter_knowledge_editor = ""
     st.session_state["_loaded_filter_input_source"] = None
@@ -1158,31 +1131,20 @@ def input_filter_should_block(result):
 
 def current_knowledge_parts():
     """현재 session_state의 분리된 knowledge parts를 명시적으로 반환한다."""
-    if (
-        st.session_state.present_self
-        or st.session_state.love
-        or st.session_state.hate
-        or st.session_state.bfi
-        or st.session_state.pvq
-        or st.session_state.future_self
-    ):
-        return {
+    if st.session_state.present_self or st.session_state.future_self:
+        return flatten_knowledge_parts({
             "present_self": st.session_state.present_self,
-            "love": st.session_state.love,
-            "hate": st.session_state.hate,
-            "bfi": st.session_state.bfi,
-            "pvq": st.session_state.pvq,
+            "love": st.session_state.get("love", ""),
+            "hate": st.session_state.get("hate", ""),
+            "bfi": st.session_state.get("bfi", ""),
+            "pvq": st.session_state.get("pvq", ""),
             "future_self": st.session_state.future_self,
-        }
+        })
 
     parts = split_knowledge_parts(st.session_state.knowledge)
     st.session_state.present_self = parts["present_self"]
-    st.session_state.love = parts["love"]
-    st.session_state.hate = parts["hate"]
-    st.session_state.bfi = parts["bfi"]
-    st.session_state.pvq = parts["pvq"]
     st.session_state.future_self = parts["future_self"]
-    return parts
+    return flatten_knowledge_parts(parts)
 
 
 def set_last_llm_io_or_stop(expected_stages):
@@ -1260,18 +1222,16 @@ def run_knowledge(user_row):
             bfi = ext_bfi_generate(user_row)
             pvq = ext_pvq_generate(user_row)
             knowledge_parts = {
-                "present_self": demo,
-                "love": love_hate_parts["love"],
-                "hate": love_hate_parts["hate"],
-                "bfi": bfi,
-                "pvq": pvq,
+                "present_self": {
+                    "profile": demo,
+                    "love": love_hate_parts["love"],
+                    "hate": love_hate_parts["hate"],
+                    "bfi": bfi,
+                    "pvq": pvq,
+                },
                 "future_self": future_profile,
             }
             st.session_state.present_self = knowledge_parts["present_self"]
-            st.session_state.love = knowledge_parts["love"]
-            st.session_state.hate = knowledge_parts["hate"]
-            st.session_state.bfi = knowledge_parts["bfi"]
-            st.session_state.pvq = knowledge_parts["pvq"]
             st.session_state.future_self = knowledge_parts["future_self"]
             st.session_state.knowledge = combine_knowledge_parts(knowledge_parts)
             st.session_state.filter_knowledge_editor = st.session_state.knowledge
@@ -1769,6 +1729,7 @@ if st.session_state.node != "select_user":
 user_row = get_user_row(extension_df)
 user_letter_to_agent = get_user_letter(user_row)
 st.session_state.current_user_letter_to_agent = user_letter_to_agent
+st.session_state.user_letter = current_user_letter_for_context(user_letter_to_agent)
 
 st.title("[FutureSelf Extension] QA")
 render_node_nav(extension_df)
@@ -1836,10 +1797,6 @@ elif st.session_state.node == "filter_letter":
         st.session_state.knowledge = filter_knowledge
         knowledge_parts = split_knowledge_parts(filter_knowledge)
         st.session_state.present_self = knowledge_parts["present_self"]
-        st.session_state.love = knowledge_parts["love"]
-        st.session_state.hate = knowledge_parts["hate"]
-        st.session_state.bfi = knowledge_parts["bfi"]
-        st.session_state.pvq = knowledge_parts["pvq"]
         st.session_state.future_self = knowledge_parts["future_self"]
         st.session_state.filter_result = None
         st.session_state.input_filter_state = None

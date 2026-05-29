@@ -146,17 +146,77 @@ def ext_knowledge_parts_generate(row, bfi_system_prompt=None, pvq_system_prompt=
     love_hate_parts = split_love_hate_parts(love_hate)
 
     return {
-        "present_self": demo,
-        "love": love_hate_parts["love"],
-        "hate": love_hate_parts["hate"],
-        "bfi": bfi,
-        "pvq": pvq,
+        "present_self": {
+            "profile": demo,
+            "love": love_hate_parts["love"],
+            "hate": love_hate_parts["hate"],
+            "bfi": bfi,
+            "pvq": pvq,
+        },
         "future_self": future_profile,
+    }
+
+
+def normalize_knowledge_parts(parts):
+    """flat/nested knowledge parts를 nested present_self 구조로 정규화한다."""
+    present_self = parts.get("present_self", "")
+    if isinstance(present_self, dict):
+        present_self_parts = {
+            "profile": present_self.get("profile", ""),
+            "love": present_self.get("love", ""),
+            "hate": present_self.get("hate", ""),
+            "bfi": present_self.get("bfi", ""),
+            "pvq": present_self.get("pvq", ""),
+        }
+    else:
+        present_self_parts = {
+            "profile": present_self,
+            "love": parts.get("love", ""),
+            "hate": parts.get("hate", ""),
+            "bfi": parts.get("bfi", ""),
+            "pvq": parts.get("pvq", ""),
+        }
+
+    return {
+        "present_self": present_self_parts,
+        "future_self": parts.get("future_self", ""),
+    }
+
+
+def present_self_to_text(present_self):
+    """present_self 하위 섹션들을 LLM 입력용 문자열로 합친다."""
+    if not isinstance(present_self, dict):
+        return present_self or ""
+    return "\n\n".join(
+        part
+        for part in [
+            present_self.get("profile", ""),
+            present_self.get("love", ""),
+            present_self.get("hate", ""),
+            present_self.get("bfi", ""),
+            present_self.get("pvq", ""),
+        ]
+        if part
+    )
+
+
+def flatten_knowledge_parts(parts):
+    """기존 호출부 호환을 위해 nested knowledge parts를 flat dict로 펼친다."""
+    normalized = normalize_knowledge_parts(parts)
+    present_self = normalized["present_self"]
+    return {
+        "present_self": present_self_to_text(present_self),
+        "love": present_self.get("love", ""),
+        "hate": present_self.get("hate", ""),
+        "bfi": present_self.get("bfi", ""),
+        "pvq": present_self.get("pvq", ""),
+        "future_self": normalized["future_self"],
     }
 
 
 def combine_love_hate_parts(parts):
     """분리된 LOVE/HATE 섹션을 기존 love_hate 문자열로 합친다."""
+    parts = flatten_knowledge_parts(parts)
     return "\n\n".join(
         part
         for part in [
@@ -169,14 +229,12 @@ def combine_love_hate_parts(parts):
 
 def combine_knowledge_parts(parts):
     """분리된 knowledge parts를 기존 통합 knowledge 문자열로 합친다."""
+    normalized = normalize_knowledge_parts(parts)
     return "\n\n".join(
         part
         for part in [
-            parts.get("present_self", ""),
-            combine_love_hate_parts(parts),
-            parts.get("bfi", ""),
-            parts.get("pvq", ""),
-            parts.get("future_self", ""),
+            present_self_to_text(normalized["present_self"]),
+            normalized.get("future_self", ""),
         ]
         if part
     )
@@ -214,14 +272,7 @@ def split_knowledge_parts(knowledge):
         if knowledge.find(marker) != -1
     }
     if not marker_positions:
-        return {
-            "present_self": knowledge.strip(),
-            "love": "",
-            "hate": "",
-            "bfi": "",
-            "pvq": "",
-            "future_self": "",
-        }
+        return normalize_knowledge_parts({"present_self": knowledge.strip(), "future_self": ""})
 
     section_starts = {}
     for key, marker_index in marker_positions.items():
@@ -245,11 +296,4 @@ def split_knowledge_parts(knowledge):
             result.update(split_love_hate_parts(section))
         else:
             result[key] = section
-    return {
-        "present_self": result["present_self"],
-        "love": result["love"],
-        "hate": result["hate"],
-        "bfi": result["bfi"],
-        "pvq": result["pvq"],
-        "future_self": result["future_self"],
-    }
+    return normalize_knowledge_parts(result)

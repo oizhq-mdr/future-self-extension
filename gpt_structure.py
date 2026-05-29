@@ -13,6 +13,19 @@ LLM_CALL_LOGS = []
 LLM_CALL_LOGS_CONTEXT = ContextVar("LLM_CALL_LOGS_CONTEXT", default=None)
 
 
+def merge_present_self_sections(present_self="", love="", hate="", bfi="", pvq=""):
+    """present_self가 이미 통합 문자열이면 그대로 쓰고, 아니면 하위 섹션을 합친다."""
+    present_self = present_self or ""
+    markers = [
+        "**[Top 3 Things this person loves]**",
+        "**[Big 5 Personality Traits in 2026]**",
+        "**[Life-guiding Principles in 2026]**",
+    ]
+    if present_self and any(marker in present_self for marker in markers):
+        return present_self
+    return "\n\n".join(part for part in [present_self, love, hate, bfi, pvq] if part)
+
+
 def clear_llm_call_log():
     LLM_CALL_LOGS.clear()
     LLM_CALL_LOGS_CONTEXT.set([])
@@ -59,23 +72,12 @@ def build_filter_user_content(
     출력 형식은 input filter system prompt의 JSON schema 지시를 따른다.
     """
     if any([present_self, love, hate, bfi, pvq, future_self]):
+        present_self_text = merge_present_self_sections(present_self, love, hate, bfi, pvq)
         return f"""[PARTICIPANT_NAME]
 {participant_name or ""}
 
 [PRESENT_SELF]
-{present_self}
-
-[LOVE]
-{love}
-
-[HATE]
-{hate}
-
-[BFI]
-{bfi}
-
-[PVQ]
-{pvq}
+{present_self_text}
 
 [FUTURE_SELF]
 {future_self}
@@ -116,23 +118,12 @@ def dd_generate_gpt4_basic(
 [USER_LETTER]
 {user_prompt}"""
     else:
+        present_self_text = merge_present_self_sections(knowledge, love, hate, bfi, pvq)
         user_content = f"""[PARTICIPANT_NAME]
 {participant_name or ""}
 
 [PRESENT_SELF]
-{knowledge}
-
-[LOVE]
-{love}
-
-[HATE]
-{hate}
-
-[BFI]
-{bfi}
-
-[PVQ]
-{pvq}
+{present_self_text}
 
 [FUTURE_SELF]
 {future_self}
@@ -334,23 +325,12 @@ def dd_evaluate_letter_with_prompt_gpt4(
     """
     context_sections = []
     if any([present_self, love, hate, bfi, pvq, future_self]):
+        present_self_text = merge_present_self_sections(present_self, love, hate, bfi, pvq)
         context_sections.append(f"""[PARTICIPANT_NAME]
 {participant_name or ""}
 
 [PRESENT_SELF]
-{present_self}
-
-[LOVE]
-{love}
-
-[HATE]
-{hate}
-
-[BFI]
-{bfi}
-
-[PVQ]
-{pvq}
+{present_self_text}
 
 [FUTURE_SELF]
 {future_self}""")
@@ -395,24 +375,13 @@ def dd_generate_improvement_prompt_gpt4(
 ):
     """스크리닝 피드백을 바탕으로 현재 시스템 답장의 개선본을 생성한다."""
     feedback_text = summarize_screening_feedback(screening_feedback)
+    present_self_text = merge_present_self_sections(present_self, love, hate, bfi, pvq)
 
     user_content = f"""[PARTICIPANT_NAME]
 {participant_name}
 
 [PRESENT_SELF]
-{present_self}
-
-[LOVE]
-{love}
-
-[HATE]
-{hate}
-
-[BFI]
-{bfi}
-
-[PVQ]
-{pvq}
+{present_self_text}
 
 [FUTURE_SELF]
 {future_self}
