@@ -1,5 +1,4 @@
 import pandas as pd
-from collections.abc import Mapping
 from pathlib import Path
 from pvq_scoring import *
 from bfi_scoring import *
@@ -160,10 +159,10 @@ def ext_knowledge_parts_generate(row, bfi_system_prompt=None, pvq_system_prompt=
 
 def normalize_knowledge_parts(parts):
     """flat/nested knowledge parts를 nested present_self 구조로 정규화한다."""
-    if not isinstance(parts, Mapping):
+    if not hasattr(parts, "get"):
         return {
             "present_self": {
-                "profile": parts or "",
+                "profile": "" if parts is None else parts,
                 "love": "",
                 "hate": "",
                 "bfi": "",
@@ -173,7 +172,7 @@ def normalize_knowledge_parts(parts):
         }
 
     present_self = parts.get("present_self", "")
-    if isinstance(present_self, Mapping):
+    if hasattr(present_self, "get"):
         present_self_parts = {
             "profile": present_self.get("profile", ""),
             "love": present_self.get("love", ""),
@@ -198,7 +197,7 @@ def normalize_knowledge_parts(parts):
 
 def present_self_to_text(present_self):
     """present_self 하위 섹션들을 LLM 입력용 문자열로 합친다."""
-    if not isinstance(present_self, Mapping):
+    if not hasattr(present_self, "get"):
         return str(present_self or "")
     return "\n\n".join(
         str(part)

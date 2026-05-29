@@ -174,7 +174,18 @@ DEMO_KNOWLEDGE_PARTS = {
     },
     "future_self": DEMO_FUTURE_SELF,
 }
-DEMO_KNOWLEDGE = combine_knowledge_parts(DEMO_KNOWLEDGE_PARTS)
+DEMO_KNOWLEDGE = "\n\n".join(
+    part
+    for part in [
+        DEMO_PRESENT_SELF,
+        DEMO_LOVE,
+        DEMO_HATE,
+        DEMO_BFI,
+        DEMO_PVQ,
+        DEMO_FUTURE_SELF,
+    ]
+    if part
+)
 
 DEMO_REPLY = """
 안녕, 잘 있지? 네가 쓴 HCI와 미디어에 대한 그 집요한 끌림, 태평양 건너 연구실을 향해 몸을 던질 거라는 호언, 그리고 Sony A7M5에 수동 렌즈 마운트해서 이국의 빛을 모을 거라는 상상을 읽으면서, 솔직히 말해 나도 거기까지 왔다. 츄리닝은 여전하고, 예민함도 덜어지진 않았지만(조금 더 노련해졌달까), 버티고 만드는 방식은 더 단단해졌다.
