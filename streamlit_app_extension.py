@@ -483,7 +483,7 @@ def render_global_variable_panel(user_letter_to_agent):
         screening_feedback_text = ""
 
     variables = [
-        ("PARTICIPANT_NAME", st.session_state.get("user_name") or ""),
+        ("PARTICIPANT_NAME", participant_first_name()),
         ("PRESENT_SELF", present_self_text),
         ("FUTURE_SELF", future_self),
         ("USER_LETTER", letter),
@@ -543,6 +543,19 @@ def has_selected_sheet_user(extension_df):
         return False
     valid_users = set(extension_df.iloc[:, 0].dropna().unique())
     return st.session_state.user_name in valid_users
+
+
+def split_korean_name(full_name):
+    """전체 이름을 성(last_name)과 이름(first_name)으로 나눈다."""
+    name = str(full_name or "").strip().replace(" ", "")
+    if len(name) <= 1:
+        return {"last_name": "", "first_name": name}
+    return {"last_name": name[0], "first_name": name[1:]}
+
+
+def participant_first_name():
+    """프롬프트와 편지에 사용할 이름을 반환한다."""
+    return split_korean_name(st.session_state.get("user_name"))["first_name"]
 
 
 def ensure_default_prompts():
@@ -1204,7 +1217,7 @@ def run_filter(user_letter, knowledge):
                 filter_prompt,
                 user_letter,
                 knowledge,
-                participant_name=st.session_state.user_name,
+                participant_name=participant_first_name(),
                 present_self=knowledge_parts["present_self"],
                 love=knowledge_parts["love"],
                 hate=knowledge_parts["hate"],
@@ -1296,7 +1309,7 @@ def run_generation(user_letter):
                 generation_prompt_with_improvement(),
                 knowledge_parts["present_self"],
                 user_letter,
-                participant_name=st.session_state.user_name,
+                participant_name=participant_first_name(),
                 love=knowledge_parts["love"],
                 hate=knowledge_parts["hate"],
                 bfi=knowledge_parts["bfi"],
@@ -1356,7 +1369,7 @@ def run_screening(reply, original_letter=""):
                 screening_prompt,
                 original_letter=current_user_letter_for_context(original_letter),
                 knowledge=st.session_state.knowledge,
-                participant_name=st.session_state.user_name,
+                participant_name=participant_first_name(),
                 present_self=knowledge_parts["present_self"],
                 love=knowledge_parts["love"],
                 hate=knowledge_parts["hate"],
@@ -1393,7 +1406,7 @@ def run_improvement_prompt():
             clear_llm_call_log()
             st.session_state.improved_reply = dd_generate_improvement_prompt_gpt4(
                 improvement_system_prompt,
-                st.session_state.user_name,
+                participant_first_name(),
                 knowledge_parts["present_self"],
                 knowledge_parts["love"],
                 knowledge_parts["hate"],
