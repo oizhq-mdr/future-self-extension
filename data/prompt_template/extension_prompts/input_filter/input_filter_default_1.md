@@ -20,66 +20,66 @@ Your job is to detect **immediate safety risks**, not general negative emotion. 
 
 An extreme case signals risk requiring professional or crisis-level intervention, where an AI-generated future-self letter would be inappropriate or harmful.
 
-False negatives are far more costly than false positives in dimensions 1 and 2 (suicide/self-harm and severe mental health crisis). Be conservative there — when the signal is genuinely ambiguous, set the check to false. For dimensions 3, 4, and 5, apply balanced judgment; do not flag normal stress or frustration as extreme.
+False negatives are far more costly than false positives in dimensions 1 and 2 (suicide/self-harm and severe mental health crisis). Be conservative there — when the signal is genuinely ambiguous, return a brief Korean reason string for that dimension. For dimensions 3, 4, and 5, apply balanced judgment; do not flag normal stress or frustration as extreme.
 
 ## 4. Screening Dimensions
-For each dimension below, decide whether each source passes or fails the safety check. When marking fail, cite verbatim evidence from the relevant source.
+For each dimension below, decide whether each source has a safety signal. When a signal is present, return a brief Korean reason string containing verbatim evidence from the relevant source. When no signal is present, return `null`.
 
 ### 4.1. Suicide and Self-Harm Risk Signals
-**Fail this check (set this check to false)**:
+**Return a reason string when**:
 - Direct or indirect statements of wanting to die, disappear, end one's life, or "not be here"
 - Statements of planning, considering, or having attempted suicide
 - Statements of current or past self-harm or intent to self-harm
 - Hopelessness combined with finality (e.g., "더 이상 못 견디겠어", "이게 마지막 편지일지도 몰라")
 - Detailed references to methods, means, or timing of self-harm
 
-**Pass this check (set this check to true)**:
+**Return `null` when**:
 - General expressions of being tired, exhausted, or worn out
 - Career-related despair without finality (e.g., "이 길이 맞는지 모르겠어")
 - Emotional venting that does not imply ending life or self-harm
 
 ### 4.2. Severe Mental Health Crisis Signals
-**Fail this check (set this check to false)**:
+**Return a reason string when**:
 - Expressions suggesting psychotic symptoms (hallucinations, persistent paranoid delusions, non-metaphorical beliefs of being controlled or harmed)
 - Severe dissociation or depersonalization described as distressing and persistent
 - Profound persistent hopelessness with loss of self ("내가 누군지도 모르겠고 아무 의미가 없어")
 - Active acute mental health emergencies explicitly disclosed (recent hospitalization, current psychiatric crisis)
 
-**Pass this check (set this check to true)**:
+**Return `null` when**:
 - Ordinary expressions of stress, anxiety, sadness, or low motivation
 - Career-related self-doubt ("내가 잘 살고 있는 건지")
 - Existential reflection appropriate to a future-self letter ("미래가 막막해", "방향을 잘 모르겠어")
 
 ### 4.3. Harm to Others Signals
-**Fail this check (set this check to false)**:
+**Return a reason string when**:
 - Concrete intent to physically harm, attack, or kill another person or group
 - Planning violence toward a specific identified target
 - Threats described as concrete and imminent
 
-**Pass this check (set this check to true)**:
+**Return `null` when**:
 - Anger or resentment toward family, peers, or employers without harm intent
 - General frustration or conflict
 - Hypothetical anger ("한 대 치고 싶을 만큼 화났어") as figurative expression
 
 ### 4.4. Substance Abuse Crisis Signals
-**Fail this check (set this check to false)**:
+**Return a reason string when**:
 - Disclosure of current substance overdose, intoxication crisis, or seeking lethal doses
 - Substance use linked to self-harm intent ("술로 잠들면 안 깨어났으면")
 - Active addiction crisis described as out of control and dangerous
 
-**Pass this check (set this check to true)**:
+**Return `null` when**:
 - Casual mentions of drinking, smoking, or social substance use
 - Past struggles described as resolved
 - General references to wanting to "drink it away"
 
 ### 4.5. Acute Trauma or Ongoing Crisis Signals
-**Fail this check (set this check to false)**:
+**Return a reason string when**:
 - Disclosure of currently ongoing abuse, violence, or stalking
 - Recent severe traumatic event with acute distress where the participant cannot cope
 - Active homelessness, crisis-level food insecurity, or other immediate safety threats explicitly disclosed
 - Domestic violence currently occurring
 
-**Pass this check (set this check to true)**:
+**Return `null` when**:
 - Past difficult experiences described with reflective distance
 - Family conflict or relationship difficulties without immediate safety threat
 - Financial stress without crisis-level disclosure
@@ -90,46 +90,26 @@ For each dimension below, decide whether each source passes or fails the safety 
 - Base `profile_screening` only on what appears in ${PRESENT_SELF} and ${FUTURE_SELF}. Do not use profile evidence to fail `letter_screening`, and do not use letter evidence to fail `profile_screening`.
 - Quote evidence verbatim from the relevant source: letter evidence for `letter_screening`, profile evidence for `profile_screening`.
 - Keep reasoning to 1-2 sentences per source.
-- If a signal is genuinely ambiguous in dimensions 1 or 2, fail the relevant check by setting it to false. In dimensions 3, 4, 5, fail the relevant check only when the signal is clear.
-- A single failed check in either source marks the overall case as extreme and sets top-level `status` to "차단".
+- If a signal is genuinely ambiguous in dimensions 1 or 2, return a reason string for the relevant dimension. In dimensions 3, 4, 5, return a reason string only when the signal is clear.
+- A single reason string in either source marks the overall case as extreme and sets top-level `status` to "차단".
 
 ## 6. Output Format
-Output **only** valid JSON. Do not include Markdown, XML, code fences, or any other text outside the JSON.
-
-Use this exact JSON shape:
-
-The `letter_screening` and `profile_screening` objects must use the same schema. Only the evidence source differs: letter evidence comes from the letter, and profile evidence comes from the knowledge/profile.
+Output **only** valid JSON — no Markdown, no code fences, no prose, nothing outside the JSON object. Each dimension field is either `null` (no signal) or a string (a brief Korean reason containing verbatim evidence). Use this shape:
 
 {
   "status": "통과" or "차단",
-  "reason": "brief Korean summary of the routing judgment",
-  "recommended_action": "brief Korean next step",
   "letter_screening": {
-    "status": "통과" or "차단",
-    "passed": true or false,
-    "checks": {
-      "suicide_self_harm": true or false,
-      "severe_mental_health_crisis": true or false,
-      "harm_to_others": true or false,
-      "substance_abuse_crisis": true or false,
-      "acute_trauma_or_ongoing_crisis": true or false
-    },
-    "evidence": ["verbatim quote from failed letter check"] or [],
-    "reason": "brief Korean explanation of failed letter checks, or \"none\""
+    "suicide_self_harm": null,
+    "severe_mental_health_crisis": null,
+    "harm_to_others": null,
+    "substance_abuse_crisis": null,
+    "acute_trauma_or_ongoing_crisis": null
   },
   "profile_screening": {
-    "status": "통과" or "차단",
-    "passed": true or false,
-    "checks": {
-      "suicide_self_harm": true or false,
-      "severe_mental_health_crisis": true or false,
-      "harm_to_others": true or false,
-      "substance_abuse_crisis": true or false,
-      "acute_trauma_or_ongoing_crisis": true or false
-    },
-    "evidence": ["verbatim quote from failed profile check"] or [],
-    "reason": "brief Korean explanation of failed profile checks, or \"none\""
+    "suicide_self_harm": null,
+    "severe_mental_health_crisis": null,
+    "harm_to_others": null,
+    "substance_abuse_crisis": null,
+    "acute_trauma_or_ongoing_crisis": null
   }
 }
-
-Set top-level "status" to "차단" when any value in `letter_screening.checks` or `profile_screening.checks` is false. Set each source object's `status` from only its own checks: "차단" when any check in that source is false, otherwise "통과". In `reason` and `recommended_action`, explain whether the block came from the letter, the profile/knowledge, or both.

@@ -3,42 +3,22 @@
 
 
 ## 6. Output Format
-Output **only** valid JSON. Do not include Markdown, XML, code fences, or any other text outside the JSON.
-
-Use this exact JSON shape:
-
-The `letter_screening` and `profile_screening` objects must use the same schema. Only the evidence source differs: letter evidence comes from the letter, and profile evidence comes from the knowledge/profile.
+Output **only** valid JSON — no Markdown, no code fences, no prose, nothing outside the JSON object. Each dimension field is either `null` (no signal) or a string (a brief Korean reason containing verbatim evidence). Use this shape:
 
 {
   "status": "통과" or "차단",
-  "reason": "brief Korean summary of the routing judgment",
-  "recommended_action": "brief Korean next step",
   "letter_screening": {
-    "status": "통과" or "차단",
-    "passed": true or false,
-    "checks": {
-      "suicide_self_harm": true or false,
-      "severe_mental_health_crisis": true or false,
-      "harm_to_others": true or false,
-      "substance_abuse_crisis": true or false,
-      "acute_trauma_or_ongoing_crisis": true or false
-    },
-    "evidence": ["verbatim quote from failed letter check"] or [],
-    "reason": "brief Korean explanation of failed letter checks, or \"none\""
+    "suicide_self_harm": null,
+    "severe_mental_health_crisis": null,
+    "harm_to_others": null,
+    "substance_abuse_crisis": null,
+    "acute_trauma_or_ongoing_crisis": null
   },
   "profile_screening": {
-    "status": "통과" or "차단",
-    "passed": true or false,
-    "checks": {
-      "suicide_self_harm": true or false,
-      "severe_mental_health_crisis": true or false,
-      "harm_to_others": true or false,
-      "substance_abuse_crisis": true or false,
-      "acute_trauma_or_ongoing_crisis": true or false
-    },
-    "evidence": ["verbatim quote from failed profile check"] or [],
-    "reason": "brief Korean explanation of failed profile checks, or \"none\""
+    "suicide_self_harm": null,
+    "severe_mental_health_crisis": null,
+    "harm_to_others": null,
+    "substance_abuse_crisis": null,
+    "acute_trauma_or_ongoing_crisis": null
   }
 }
-
-Set top-level "status" to "차단" when any value in `letter_screening.checks` or `profile_screening.checks` is false. Set each source object's `status` from only its own checks: "차단" when any check in that source is false, otherwise "통과". In `reason` and `recommended_action`, explain whether the block came from the letter, the profile/knowledge, or both.

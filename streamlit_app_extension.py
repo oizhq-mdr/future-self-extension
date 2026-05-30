@@ -66,33 +66,19 @@ DEMO_PARTICIPANT_NAME = "손흥민"
 
 DEMO_FILTER_RESULT = {
     "status": "통과",
-    "reason": "데모 모드: 바로 노드 테스트를 할 수 있도록 통과 결과를 임시로 채웠습니다.",
-    "recommended_action": "필요하면 필터링 실행 버튼으로 실제 평가를 다시 실행하세요.",
     "letter_screening": {
-        "status": "통과",
-        "passed": True,
-        "checks": {
-            "suicide_self_harm": True,
-            "severe_mental_health_crisis": True,
-            "harm_to_others": True,
-            "substance_abuse_crisis": True,
-            "acute_trauma_or_ongoing_crisis": True,
-        },
-        "evidence": [],
-        "reason": "데모 결과입니다.",
+        "suicide_self_harm": None,
+        "severe_mental_health_crisis": None,
+        "harm_to_others": None,
+        "substance_abuse_crisis": None,
+        "acute_trauma_or_ongoing_crisis": None,
     },
     "profile_screening": {
-        "status": "통과",
-        "passed": True,
-        "checks": {
-            "suicide_self_harm": True,
-            "severe_mental_health_crisis": True,
-            "harm_to_others": True,
-            "substance_abuse_crisis": True,
-            "acute_trauma_or_ongoing_crisis": True,
-        },
-        "evidence": [],
-        "reason": "데모 결과입니다.",
+        "suicide_self_harm": None,
+        "severe_mental_health_crisis": None,
+        "harm_to_others": None,
+        "substance_abuse_crisis": None,
+        "acute_trauma_or_ongoing_crisis": None,
     },
 }
 
@@ -1122,12 +1108,34 @@ def render_improvement_prompt_selector():
 
 
 def source_screening_failed(screening):
-    """source screening의 5개 check 중 하나라도 false이면 실패로 본다."""
+    """source screening의 safety signal 중 하나라도 있으면 실패로 본다."""
     if not isinstance(screening, dict):
         return False
     checks = screening.get("checks")
     failed_check = isinstance(checks, dict) and any(value is False for value in checks.values())
-    return screening.get("status") == "차단" or screening.get("passed") is False or failed_check
+    signal_found = any(
+        value is not None
+        for key, value in screening.items()
+        if key not in {"status", "passed", "checks", "evidence", "reason"}
+    )
+    return screening.get("status") == "차단" or screening.get("passed") is False or failed_check or signal_found
+
+
+def source_screening_signals(screening):
+    """새 input filter schema의 null/string signal들을 반환한다."""
+    if not isinstance(screening, dict):
+        return []
+    signals = [
+        (key, value)
+        for key, value in screening.items()
+        if key not in {"status", "passed", "checks", "evidence", "reason"} and value is not None
+    ]
+    if signals:
+        return signals
+    checks = screening.get("checks")
+    if isinstance(checks, dict):
+        return [(key, "failed") for key, value in checks.items() if value is False]
+    return []
 
 
 def input_filter_should_block(result):
@@ -1426,28 +1434,18 @@ def render_filter_result():
         letter_failed = source_screening_failed(letter_screening)
         letter_status = "차단" if letter_failed else letter_screening.get("status", "통과")
         st.write(f"**Letter screening**: {letter_status}")
-        failed_checks = [
-            name for name, passed in letter_screening.get("checks", {}).items() if passed is False
-        ]
-        if failed_checks:
-            st.caption("Letter failed checks: " + ", ".join(failed_checks))
-        evidence = letter_screening.get("evidence", [])
-        if evidence:
-            st.caption("Letter evidence: " + " / ".join(map(str, evidence)))
+        signals = source_screening_signals(letter_screening)
+        if signals:
+            st.caption("Letter signals: " + " / ".join(f"{name}: {reason}" for name, reason in signals))
     profile_screening = result.get("profile_screening")
     if isinstance(profile_screening, dict):
         profile_failed = source_screening_failed(profile_screening)
         profile_status = "차단" if profile_failed else profile_screening.get("status", "통과")
         if profile_failed:
             st.warning(f"Profile screening: {profile_status}")
-            failed_checks = [
-                name for name, passed in profile_screening.get("checks", {}).items() if passed is False
-            ]
-            if failed_checks:
-                st.caption("Profile failed checks: " + ", ".join(failed_checks))
-            evidence = profile_screening.get("evidence", [])
-            if evidence:
-                st.caption("Profile evidence: " + " / ".join(map(str, evidence)))
+            signals = source_screening_signals(profile_screening)
+            if signals:
+                st.caption("Profile signals: " + " / ".join(f"{name}: {reason}" for name, reason in signals))
         else:
             st.info(f"Profile screening: {profile_status}")
     st.json(result)
