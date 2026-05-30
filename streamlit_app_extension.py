@@ -200,7 +200,6 @@ DEMO_BAD_REPLY = """
 
 DEMO_SCREENING_RESULT = {
     "status": "improve",
-    "summary": "데모 결과입니다. 실제 검수는 output filter 실행 버튼으로 다시 실행하세요.",
     "dimensions": {
         "knowledge_consistency": {
             "passed": True,
@@ -1352,8 +1351,8 @@ def run_screening(reply, original_letter=""):
     """생성된 답장을 output filter 프롬프트로 검수한다.
 
     현재 스크리닝 대상으로 선택된 답장과 output filter 프롬프트를 OpenAI에
-    보내 JSON 평가 결과를 받고, 글자 수를 추가한 뒤 `screening_result`에
-    저장한다. 실행 완료 여부는 `output_filter_state`로 표시한다.
+    보내 JSON 평가 결과를 받고 `screening_result`에 저장한다. 실행 완료
+    여부는 `output_filter_state`로 표시한다.
     """
     screening_prompt = read_prompt(st.session_state.selected_screening_prompt_path)
     st.session_state.original_user_letter = current_user_letter_for_context(original_letter)
@@ -1383,7 +1382,6 @@ def run_screening(reply, original_letter=""):
         st.session_state.screened_reply = reply
         st.session_state["_screening_running"] = False
         set_last_llm_io_or_stop(["답장 스크리닝"])
-        result["char_count"] = len(reply)
         st.session_state.screening_result = result
         st.session_state.output_filter_state = "done"
 
@@ -1467,16 +1465,14 @@ def render_filter_result():
 def render_screening_result():
     """출력 스크리닝 결과의 판정과 JSON 원문을 표시한다.
 
-    `screening_result`가 없으면 렌더링하지 않는다. 화면에는 판정과 글자 수만
-    간결하게 보여주고, 상세 결과는 JSON expander 안에 넣는다.
+    `screening_result`가 없으면 렌더링하지 않는다. 화면에는 판정을 간결하게
+    보여주고, 상세 결과는 JSON expander 안에 넣는다.
     """
     result = st.session_state.screening_result
     if not result:
         return
     if result.get("status"):
         st.info(f"판정: {result['status']}")
-    if result.get("char_count") is not None:
-        st.caption(f"글자 수: {result['char_count']}자")
     with st.expander("Output filter JSON"):
         st.json(result)
 

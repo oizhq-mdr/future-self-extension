@@ -103,7 +103,6 @@ Use this JSON shape:
 ```json
 {
   "status": "improve",
-  "summary": "한국어 전체 판정 요약",
   "dimensions": {
     "knowledge_consistency": {
       "passed": false,
