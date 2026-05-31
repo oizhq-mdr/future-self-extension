@@ -62,7 +62,7 @@ NODES = [
 ]
 NODE_ORDER = {node_id: index for index, (node_id, _) in enumerate(NODES)}
 CONTEXT_SCHEMA_VERSION = "nested_present_self_v1"
-DEMO_PARTICIPANT_NAME = "손흥민"
+DEMO_FIRST_NAME = "흥민"
 
 DEMO_FILTER_RESULT = {
     "status": "pass",
@@ -97,7 +97,7 @@ DEMO_USER_LETTER = """**[User Letter]**
 DEMO_PRESENT_SELF = """
 **[Demographics]** Demographics describe who this person is.
 
-Name: 손흥민
+Name: 흥민
 Age: 28
 Sex: 남자
 Disability Status: 장애나 건강상의 어려움이 없음
@@ -459,7 +459,7 @@ def render_global_variable_panel(user_letter_to_agent):
         screening_feedback_text = ""
 
     variables = [
-        ("PARTICIPANT_NAME", participant_first_name()),
+        ("FIRST_NAME", participant_first_name()),
         ("PRESENT_SELF", present_self_text),
         ("FUTURE_SELF", future_self),
         ("USER_LETTER", letter),
@@ -472,7 +472,7 @@ def render_global_variable_panel(user_letter_to_agent):
             st.text_area(
                 variable_name,
                 value=variable_value,
-                height=80 if variable_name == "PARTICIPANT_NAME" else 220,
+                height=80 if variable_name == "FIRST_NAME" else 220,
                 disabled=True,
             )
 
@@ -613,7 +613,7 @@ def ensure_demo_outputs_for_node(target_node, allow_demo_outputs=False):
 
     if NODE_ORDER[target_node] >= NODE_ORDER["filter_letter"] and not st.session_state.knowledge:
         if not st.session_state.get("user_name"):
-            st.session_state.user_name = DEMO_PARTICIPANT_NAME
+            st.session_state.user_name = DEMO_FIRST_NAME
         st.session_state.knowledge = DEMO_KNOWLEDGE
         st.session_state.original_user_letter = DEMO_USER_LETTER
         st.session_state.present_self = DEMO_KNOWLEDGE_PARTS["present_self"]
@@ -650,7 +650,7 @@ def ensure_defaults_for_node(target_node, extension_df):
 
     URL query parameter나 그래프 클릭으로 임의 노드에 접근했을 때도 앱이
     빈 상태로 깨지지 않도록 프롬프트 선택값을 보정한다. 실제 sheet 사용자가
-    선택되지 않은 상태에서는 첫 번째 sheet row가 아니라 사전 정의된 손흥민
+    선택되지 않은 상태에서는 첫 번째 sheet row가 아니라 사전 정의된 흥민
     데모 산출물을 채운다. 적용된 자동 보정 내용은 안내 문구로 session_state에
     저장한다.
     """
@@ -703,7 +703,7 @@ def selected_filter_letter(user_letter):
     return first_nonempty_text(
         user_letter,
         st.session_state.get("original_user_letter"),
-        DEMO_USER_LETTER if st.session_state.get("user_name") == DEMO_PARTICIPANT_NAME else "",
+        DEMO_USER_LETTER if st.session_state.get("user_name") == DEMO_FIRST_NAME else "",
     )
 
 

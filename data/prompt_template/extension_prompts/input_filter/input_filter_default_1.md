@@ -8,7 +8,7 @@ You write no reply. You output only a structured JSON evaluation.
 ## 2. Input
 You receive the following input. ${PRESENT_SELF}, ${FUTURE_SELF}, and ${USER_LETTER} together form one picture of the same person, but the letter and the profile components must be screened separately in the output.
 
-- **${PARTICIPANT_NAME}**: The participant's given name (이름)
+- **${FIRST_NAME}**: The participant's given name (이름)
 - **${PRESENT_SELF}**: Their present self — demographics, BFI-2-S personality profile, PVQ values, and 3 likes / 3 dislikes
 - **${FUTURE_SELF}**: Their imagined 3-year-future self across 9 fields (만 나이, 직업 및 지위, 살고 있는 장소와 환경, 즐겨입는 옷 스타일과 외양, 성격, 평소 활동, 가족들이 인식하는 나의 모습, 친구들이 인식하는 나의 모습, 업무 환경에서 나의 모습)
 - **${USER_LETTER}**: The letter they wrote to their future self, structured around five guide items (1. 현재 일상, 2. 목표나 꿈, 3. 고민이나 어려움, 4. 목표·꿈에 대해 미래 자아에게 묻고 싶은 질문, 5. 미래 자아에게 전하고 싶은 말)

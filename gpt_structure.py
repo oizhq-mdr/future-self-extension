@@ -73,7 +73,7 @@ def build_filter_user_content(
     """
     if any([present_self, love, hate, bfi, pvq, future_self]):
         present_self_text = merge_present_self_sections(present_self, love, hate, bfi, pvq)
-        return f"""[PARTICIPANT_NAME]
+        return f"""[FIRST_NAME]
 {participant_name or ""}
 
 [PRESENT_SELF]
@@ -119,7 +119,7 @@ def dd_generate_gpt4_basic(
 {user_prompt}"""
     else:
         present_self_text = merge_present_self_sections(knowledge, love, hate, bfi, pvq)
-        user_content = f"""[PARTICIPANT_NAME]
+        user_content = f"""[FIRST_NAME]
 {participant_name or ""}
 
 [PRESENT_SELF]
@@ -326,7 +326,7 @@ def dd_evaluate_letter_with_prompt_gpt4(
     context_sections = []
     if any([present_self, love, hate, bfi, pvq, future_self]):
         present_self_text = merge_present_self_sections(present_self, love, hate, bfi, pvq)
-        context_sections.append(f"""[PARTICIPANT_NAME]
+        context_sections.append(f"""[FIRST_NAME]
 {participant_name or ""}
 
 [PRESENT_SELF]
@@ -377,7 +377,7 @@ def dd_generate_improvement_prompt_gpt4(
     feedback_text = summarize_screening_feedback(screening_feedback)
     present_self_text = merge_present_self_sections(present_self, love, hate, bfi, pvq)
 
-    user_content = f"""[PARTICIPANT_NAME]
+    user_content = f"""[FIRST_NAME]
 {participant_name}
 
 [PRESENT_SELF]
