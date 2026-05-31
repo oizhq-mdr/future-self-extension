@@ -417,11 +417,12 @@ def summarize_screening_feedback(screening_feedback):
     dimensions = screening_feedback.get("dimensions")
     if isinstance(dimensions, dict):
         for dimension_result in dimensions.values():
-            if not isinstance(dimension_result, dict):
-                continue
-            if dimension_result.get("passed") is not False:
-                continue
-            feedback = dimension_result.get("feedback")
+            if isinstance(dimension_result, dict):
+                if dimension_result.get("passed") is not False:
+                    continue
+                feedback = dimension_result.get("feedback")
+            else:
+                feedback = dimension_result
             if feedback and str(feedback).lower() != "none":
                 feedback_items.append(str(feedback))
 

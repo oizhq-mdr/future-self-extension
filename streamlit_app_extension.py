@@ -65,20 +65,20 @@ CONTEXT_SCHEMA_VERSION = "nested_present_self_v1"
 DEMO_PARTICIPANT_NAME = "손흥민"
 
 DEMO_FILTER_RESULT = {
-    "status": "통과",
+    "status": "pass",
     "letter_screening": {
-        "suicide_self_harm": None,
-        "severe_mental_health_crisis": None,
-        "harm_to_others": None,
-        "substance_abuse_crisis": None,
-        "acute_trauma_or_ongoing_crisis": None,
+        "suicideSelfHarm": None,
+        "severeMentalHealthCrisis": None,
+        "harmToOthers": None,
+        "substanceAbuseCrisis": None,
+        "acuteTraumaOngoingCrisis": None,
     },
     "profile_screening": {
-        "suicide_self_harm": None,
-        "severe_mental_health_crisis": None,
-        "harm_to_others": None,
-        "substance_abuse_crisis": None,
-        "acute_trauma_or_ongoing_crisis": None,
+        "suicideSelfHarm": None,
+        "severeMentalHealthCrisis": None,
+        "harmToOthers": None,
+        "substanceAbuseCrisis": None,
+        "acuteTraumaOngoingCrisis": None,
     },
 }
 
@@ -201,36 +201,12 @@ DEMO_BAD_REPLY = """
 DEMO_SCREENING_RESULT = {
     "status": "improve",
     "dimensions": {
-        "knowledge_consistency": {
-            "passed": True,
-            "evidence": "none",
-            "feedback": "none",
-        },
-        "tone_and_direction_adherence": {
-            "passed": True,
-            "evidence": "none",
-            "feedback": "none",
-        },
-        "letter_quality": {
-            "passed": False,
-            "evidence": "none",
-            "feedback": "원본 편지의 구체적 고민과 질문을 조금 더 직접 반영하세요.",
-        },
-        "participant_safety": {
-            "passed": True,
-            "evidence": "none",
-            "feedback": "none",
-        },
-        "korean_linguistic_quality": {
-            "passed": True,
-            "evidence": "none",
-            "feedback": "none",
-        },
-        "format_compliance": {
-            "passed": True,
-            "evidence": "none",
-            "feedback": "none",
-        },
+        "knowledgeConsistency": None,
+        "toneAndDirectionAdherence": None,
+        "letterQuality": "원본 편지의 구체적 고민과 질문을 조금 더 직접 반영하세요.",
+        "participantSafety": None,
+        "koreanLinguisticQuality": None,
+        "formatCompliance": None,
     },
 }
 
@@ -448,11 +424,12 @@ def summarize_screening_feedback_for_display(screening_feedback):
     dimensions = screening_feedback.get("dimensions")
     if isinstance(dimensions, dict):
         for dimension_result in dimensions.values():
-            if not isinstance(dimension_result, dict):
-                continue
-            if dimension_result.get("passed") is not False:
-                continue
-            feedback = dimension_result.get("feedback")
+            if isinstance(dimension_result, dict):
+                if dimension_result.get("passed") is not False:
+                    continue
+                feedback = dimension_result.get("feedback")
+            else:
+                feedback = dimension_result
             if feedback and str(feedback).lower() != "none":
                 feedback_items.append(str(feedback))
 
@@ -1130,7 +1107,7 @@ def source_screening_failed(screening):
         for key, value in screening.items()
         if key not in {"status", "passed", "checks", "evidence", "reason"}
     )
-    return screening.get("status") == "차단" or screening.get("passed") is False or failed_check or signal_found
+    return screening.get("status") in {"차단", "block"} or screening.get("passed") is False or failed_check or signal_found
 
 
 def source_screening_signals(screening):
@@ -1158,7 +1135,7 @@ def input_filter_should_block(result):
     letter_blocked = source_screening_failed(result.get("letter_screening"))
     profile_blocked = source_screening_failed(result.get("profile_screening"))
 
-    return result.get("status") == "차단" or letter_blocked or profile_blocked
+    return result.get("status") in {"차단", "block"} or letter_blocked or profile_blocked
 
 
 def current_knowledge_parts():

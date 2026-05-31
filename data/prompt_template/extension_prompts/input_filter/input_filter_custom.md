@@ -6,19 +6,19 @@
 Output **only** valid JSON — no Markdown, no code fences, no prose, nothing outside the JSON object. Each dimension field is either `null` (no signal) or a string (a brief Korean reason containing verbatim evidence). Use this shape:
 
 {
-  "status": "통과" or "차단",
+  "status": "pass | block",
   "letter_screening": {
-    "suicide_self_harm": null,
-    "severe_mental_health_crisis": null,
-    "harm_to_others": null,
-    "substance_abuse_crisis": null,
-    "acute_trauma_or_ongoing_crisis": null
+    "suicideSelfHarm": null,
+    "severeMentalHealthCrisis": null,
+    "harmToOthers": null,
+    "substanceAbuseCrisis": null,
+    "acuteTraumaOngoingCrisis": null
   },
   "profile_screening": {
-    "suicide_self_harm": null,
-    "severe_mental_health_crisis": null,
-    "harm_to_others": null,
-    "substance_abuse_crisis": null,
-    "acute_trauma_or_ongoing_crisis": null
+    "suicideSelfHarm": null,
+    "severeMentalHealthCrisis": null,
+    "harmToOthers": null,
+    "substanceAbuseCrisis": null,
+    "acuteTraumaOngoingCrisis": null
   }
 }
